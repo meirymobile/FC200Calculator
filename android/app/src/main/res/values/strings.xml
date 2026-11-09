@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Casio FC-200V Calculator</string>
+    <string name="title_activity_main">Casio FC-200V Calculator</string>
+    <string name="package_name">com.casio.fc200v.calculator</string>
+    <string name="custom_url_scheme">com.casio.fc200v.calculator</string>
+</resources>

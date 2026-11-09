@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="100" fill="#16171a"/>
+  <rect x="36" y="36" width="440" height="440" rx="70" fill="#1e2024" stroke="#2b2e36" stroke-width="8"/>
+  <rect x="70" y="70" width="372" height="130" rx="20" fill="#92a494" stroke="#121413" stroke-width="6"/>
+  <text x="90" y="115" font-family="monospace" font-size="28" font-weight="bold" fill="#142017">CMPD  SET:END</text>
+  <text x="415" y="175" font-family="monospace" font-size="52" font-weight="900" text-anchor="end" fill="#142017">-1,085.26</text>
+  <!-- Blue Gray Dpad -->
+  <circle cx="256" cy="275" r="48" fill="#36475a" stroke="#253240" stroke-width="6"/>
+  <circle cx="256" cy="275" r="22" fill="#253240"/>
+  <!-- Keypad dots -->
+  <circle cx="120" cy="370" r="22" fill="#383d47"/>
+  <circle cx="188" cy="370" r="22" fill="#383d47"/>
+  <circle cx="256" cy="370" r="22" fill="#383d47"/>
+  <circle cx="324" cy="370" r="22" fill="#842020"/>
+  <circle cx="392" cy="370" r="22" fill="#a62b2b"/>
+  <circle cx="120" cy="430" r="22" fill="#383d47"/>
+  <circle cx="188" cy="430" r="22" fill="#383d47"/>
+  <circle cx="256" cy="430" r="22" fill="#383d47"/>
+  <rect x="302" y="408" width="112" height="44" rx="22" fill="#2563eb"/>
+  <text x="358" y="437" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#ffffff">EXE</text>
+</svg>
