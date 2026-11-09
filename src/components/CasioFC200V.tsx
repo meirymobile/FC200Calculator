@@ -19,6 +19,21 @@ import { aprToEff, effToApr } from '../engine/conversion';
 import { solveCost, solveMargin, solveSell } from '../engine/cost';
 import { evaluateMathExpression, EvalContext } from '../engine/mathEvaluator';
 import {
+  solveBEVNProfit,
+  solveBEVNQuantity,
+  solveBEVNPrice,
+  solveBEVNVariableCost,
+  solveBEVNFixedCost,
+  BEVNParams,
+} from '../engine/bevn';
+import {
+  calculateDepreciation,
+  DepreciationParams,
+  DepreciationMethod,
+} from '../engine/depreciation';
+import { calculateDaysBetween, addDaysToDate, DayBasis } from '../engine/days';
+import { solveBondPrice, solveBondYield, BondParams } from '../engine/bond';
+import {
   generateTVMSolution,
   generateAmortSolution,
   generateCashFlowSolution,
@@ -108,6 +123,42 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     cst: 100,
     sel: 125,
     mar: 20,
+  });
+
+  // BEVN (Break-Even) parameters
+  const [bevnParams, setBevnParams] = useState<BEVNParams>({
+    prc: 100,
+    vc: 60,
+    fc: 20000,
+    q: 500,
+    prf: 0,
+  });
+
+  // DEPR (Depreciation) parameters
+  const [deprParams, setDeprParams] = useState<DepreciationParams>({
+    method: 'SL',
+    n: 5,
+    cst: 10000,
+    sal: 1000,
+    j: 1,
+  });
+
+  // DAYS (Date/Day) parameters
+  const [daysParams, setDaysParams] = useState<{ d1: string; d2: string; basis: DayBasis }>({
+    d1: '2026.0101',
+    d2: '2027.0101',
+    basis: '365',
+  });
+
+  // BOND parameters
+  const [bondParams, setBondParams] = useState<BondParams>({
+    couponsPerYear: 1,
+    d1: '2026.0101',
+    d2: '2031.0101',
+    rdv: 100,
+    cpn: 5.0,
+    yld: 5.0,
+    prc: 100,
   });
 
   // COMP Mode expression
@@ -227,11 +278,42 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
           { key: 'sel', label: 'SEL', value: `${costParams.sel}`, canSolve: true },
           { key: 'mar', label: 'MAR%', value: `${costParams.mar}`, canSolve: true },
         ];
-      case 'DAYS':
+      case 'DAYS': {
+        const dys = calculateDaysBetween(daysParams.d1, daysParams.d2, daysParams.basis);
         return [
-          { key: 'dys_d1', label: 'd1', value: '2026.1109', canSolve: false },
-          { key: 'dys_d2', label: 'd2', value: '2027.1109', canSolve: false },
-          { key: 'dys_dys', label: 'Dys', value: 365, canSolve: true },
+          { key: 'dys_d1', label: 'd1', value: daysParams.d1, canSolve: false },
+          { key: 'dys_d2', label: 'd2', value: daysParams.d2, canSolve: false },
+          { key: 'dys_dys', label: 'Dys', value: dys, canSolve: true },
+          { key: 'dys_basis', label: 'Set', value: daysParams.basis, canSolve: false },
+        ];
+      }
+      case 'DEPR': {
+        const deprRes = calculateDepreciation(deprParams);
+        return [
+          { key: 'depr_mth', label: 'MTH', value: deprParams.method, canSolve: false },
+          { key: 'depr_n', label: 'n', value: deprParams.n, canSolve: false },
+          { key: 'depr_cst', label: 'CST', value: deprParams.cst, canSolve: false },
+          { key: 'depr_sal', label: 'SAL', value: deprParams.sal, canSolve: false },
+          { key: 'depr_j', label: 'j', value: deprParams.j, canSolve: false },
+          { key: 'depr_dpj', label: 'DPJ', value: deprRes.dpj, canSolve: true },
+          { key: 'depr_rdv', label: 'RDV', value: deprRes.rdv, canSolve: true },
+          { key: 'depr_acc', label: 'ACC', value: deprRes.acc, canSolve: true },
+        ];
+      }
+      case 'BOND':
+        return [
+          { key: 'bond_cpn', label: 'CPN', value: `${bondParams.cpn}%`, canSolve: false },
+          { key: 'bond_yld', label: 'YLD', value: `${bondParams.yld}%`, canSolve: true },
+          { key: 'bond_prc', label: 'PRC', value: bondParams.prc, canSolve: true },
+          { key: 'bond_rdv', label: 'RDV', value: bondParams.rdv, canSolve: false },
+        ];
+      case 'BEVN':
+        return [
+          { key: 'bevn_prc', label: 'PRC', value: bevnParams.prc, canSolve: true },
+          { key: 'bevn_vc', label: 'VC', value: bevnParams.vc, canSolve: true },
+          { key: 'bevn_fc', label: 'FC', value: bevnParams.fc, canSolve: true },
+          { key: 'bevn_q', label: 'Q', value: bevnParams.q, canSolve: true },
+          { key: 'bevn_prf', label: 'PRF', value: bevnParams.prf, canSolve: true },
         ];
       default:
         return [{ key: 'res', label: 'ANS', value: compResult, canSolve: false }];
@@ -418,6 +500,18 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       return;
     }
 
+    if (currentItem.key === 'depr_mth') {
+      const methods: DepreciationMethod[] = ['SL', 'SYD', 'DB'];
+      const nextIdx = (methods.indexOf(deprParams.method) + 1) % methods.length;
+      setDeprParams((p) => ({ ...p, method: methods[nextIdx] }));
+      return;
+    }
+
+    if (currentItem.key === 'dys_basis') {
+      setDaysParams((p) => ({ ...p, basis: p.basis === '365' ? '360' : '365' }));
+      return;
+    }
+
     if (isEditing && editValue.trim() !== '') {
       const num = parseFloat(editValue);
       if (!isNaN(num)) {
@@ -465,6 +559,22 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       setCnvrParams((p) => ({ ...p, [key.replace('cnvr_', '')]: val }));
     } else if (mode === 'COST') {
       setCostParams((p) => ({ ...p, [key]: val }));
+    } else if (mode === 'BEVN') {
+      const fld = key.replace('bevn_', '') as keyof BEVNParams;
+      setBevnParams((p) => ({ ...p, [fld]: val }));
+    } else if (mode === 'DEPR') {
+      if (key === 'depr_n') setDeprParams((p) => ({ ...p, n: val }));
+      else if (key === 'depr_cst') setDeprParams((p) => ({ ...p, cst: val }));
+      else if (key === 'depr_sal') setDeprParams((p) => ({ ...p, sal: val }));
+      else if (key === 'depr_j') setDeprParams((p) => ({ ...p, j: val }));
+    } else if (mode === 'DAYS') {
+      if (key === 'dys_d1') setDaysParams((p) => ({ ...p, d1: String(val) }));
+      else if (key === 'dys_d2') setDaysParams((p) => ({ ...p, d2: String(val) }));
+    } else if (mode === 'BOND') {
+      if (key === 'bond_cpn') setBondParams((p) => ({ ...p, cpn: val }));
+      else if (key === 'bond_yld') setBondParams((p) => ({ ...p, yld: val }));
+      else if (key === 'bond_prc') setBondParams((p) => ({ ...p, prc: val }));
+      else if (key === 'bond_rdv') setBondParams((p) => ({ ...p, rdv: val }));
     }
   };
 
@@ -555,6 +665,44 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
           const cst = solveCost(costParams.sel, costParams.mar);
           setCostParams((p) => ({ ...p, cst }));
           setStatusMessage('SOLVED CST');
+        }
+      } else if (mode === 'BEVN') {
+        if (currentItem.key === 'bevn_prf') {
+          const prf = solveBEVNProfit(bevnParams);
+          setBevnParams((p) => ({ ...p, prf }));
+          setStatusMessage('SOLVED PRF');
+        } else if (currentItem.key === 'bevn_q') {
+          const q = solveBEVNQuantity(bevnParams);
+          setBevnParams((p) => ({ ...p, q }));
+          setStatusMessage('SOLVED Q');
+        } else if (currentItem.key === 'bevn_prc') {
+          const prc = solveBEVNPrice(bevnParams);
+          setBevnParams((p) => ({ ...p, prc }));
+          setStatusMessage('SOLVED PRC');
+        } else if (currentItem.key === 'bevn_vc') {
+          const vc = solveBEVNVariableCost(bevnParams);
+          setBevnParams((p) => ({ ...p, vc }));
+          setStatusMessage('SOLVED VC');
+        } else if (currentItem.key === 'bevn_fc') {
+          const fc = solveBEVNFixedCost(bevnParams);
+          setBevnParams((p) => ({ ...p, fc }));
+          setStatusMessage('SOLVED FC');
+        }
+      } else if (mode === 'DEPR') {
+        const res = calculateDepreciation(deprParams);
+        setStatusMessage(`DEPR ${deprParams.method} YR ${deprParams.j}`);
+      } else if (mode === 'DAYS') {
+        const d = calculateDaysBetween(daysParams.d1, daysParams.d2, daysParams.basis);
+        setStatusMessage(`DAYS: ${d}`);
+      } else if (mode === 'BOND') {
+        if (currentItem.key === 'bond_prc') {
+          const prc = solveBondPrice(bondParams);
+          setBondParams((p) => ({ ...p, prc }));
+          setStatusMessage('SOLVED PRC');
+        } else if (currentItem.key === 'bond_yld') {
+          const yld = solveBondYield(bondParams);
+          setBondParams((p) => ({ ...p, yld }));
+          setStatusMessage('SOLVED YLD');
         }
       }
     } catch (err: any) {

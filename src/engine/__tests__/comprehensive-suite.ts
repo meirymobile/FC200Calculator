@@ -20,6 +20,16 @@ import {
 import { aprToEff, effToApr } from '../conversion';
 import { solveCost, solveSell, solveMargin } from '../cost';
 import { evaluateMathExpression, EvalContext } from '../mathEvaluator';
+import {
+  solveBEVNProfit,
+  solveBEVNQuantity,
+  solveBEVNPrice,
+  solveBEVNFixedCost,
+  calculateBreakEvenPoint,
+} from '../bevn';
+import { calculateDepreciation } from '../depreciation';
+import { calculateDaysBetween, addDaysToDate } from '../days';
+import { solveBondPrice, solveBondYield } from '../bond';
 
 export interface TestResult {
   category: string;
@@ -93,7 +103,7 @@ function assertThrows(
   });
 }
 
-console.log('Running 120 Comprehensive Tests for Casio FC-200V Engine...');
+console.log('Running 160 Comprehensive Tests for Casio FC-200V Engine...');
 
 // ==========================================
 // 1. TVM - solvePMT (10 Tests)
@@ -727,6 +737,238 @@ assertApprox('COMP', 'COMP-10', 'Memory variable: A * 2 + Ans = 50',
   {}, evaluateMathExpression('A * 2 + Ans', { angleUnit: 'DEG', ans: 10, memory: { A: 20 } }), 50.00, 0.001);
 
 // ==========================================
+// 13. BEVN (Break-Even Analysis) Tests (10 tests)
+// ==========================================
+// Test 13.1: Standard Profit: Q=1000, PRC=50, VC=30, FC=10000 -> PRF = 10000
+assertApprox('BEVN', 'BEVN-01', 'Calculate Profit',
+  { q: 1000, prc: 50, vc: 30, fc: 10000 },
+  solveBEVNProfit({ q: 1000, prc: 50, vc: 30, fc: 10000, prf: 0 }),
+  10000, 0.01);
+
+// Test 13.2: Break-Even Quantity (PRF=0): PRC=50, VC=30, FC=10000 -> Q=500
+assertApprox('BEVN', 'BEVN-02', 'Break-even quantity at PRF=0',
+  { prc: 50, vc: 30, fc: 10000, prf: 0 },
+  solveBEVNQuantity({ q: 0, prc: 50, vc: 30, fc: 10000, prf: 0 }),
+  500, 0.01);
+
+// Test 13.3: Target Profit Quantity: PRF=20000 -> Q = (10000+20000)/20 = 1500
+assertApprox('BEVN', 'BEVN-03', 'Quantity for target profit of 20000',
+  { prc: 50, vc: 30, fc: 10000, prf: 20000 },
+  solveBEVNQuantity({ q: 0, prc: 50, vc: 30, fc: 10000, prf: 20000 }),
+  1500, 0.01);
+
+// Test 13.4: Required Selling Price: Q=500, VC=20, FC=5000, PRF=5000 -> PRC=40
+assertApprox('BEVN', 'BEVN-04', 'Solve required price',
+  { q: 500, vc: 20, fc: 5000, prf: 5000 },
+  solveBEVNPrice({ q: 500, prc: 0, vc: 20, fc: 5000, prf: 5000 }),
+  40, 0.01);
+
+// Test 13.5: Allowable Fixed Cost: Q=2000, PRC=100, VC=60, PRF=30000 -> FC=50000
+assertApprox('BEVN', 'BEVN-05', 'Solve allowable fixed cost',
+  { q: 2000, prc: 100, vc: 60, prf: 30000 },
+  solveBEVNFixedCost({ q: 2000, prc: 100, vc: 60, fc: 0, prf: 30000 }),
+  50000, 0.01);
+
+// Test 13.6: BEP Sales revenue helper: FC=20000, PRC=100, VC=60 -> BEP Units=500, BEP Sales=50000
+assertApprox('BEVN', 'BEVN-06', 'BEP sales revenue',
+  { prc: 100, vc: 60, fc: 20000 },
+  calculateBreakEvenPoint({ q: 0, prc: 100, vc: 60, fc: 20000, prf: 0 }).bepSales,
+  50000, 0.01);
+
+// Test 13.7: Zero profit break-even verification
+assertApprox('BEVN', 'BEVN-07', 'Profit at exact break-even quantity is zero',
+  { q: 500, prc: 100, vc: 60, fc: 20000 },
+  solveBEVNProfit({ q: 500, prc: 100, vc: 60, fc: 20000, prf: 0 }),
+  0, 0.01);
+
+// Test 13.8: Loss scenario: Q=200, Margin=40, FC=20000 -> PRF = -12000
+assertApprox('BEVN', 'BEVN-08', 'Loss when below break-even',
+  { q: 200, prc: 100, vc: 60, fc: 20000 },
+  solveBEVNProfit({ q: 200, prc: 100, vc: 60, fc: 20000, prf: 0 }),
+  -12000, 0.01);
+
+// Test 13.9: High volume low margin: Q=100000, PRC=1.5, VC=1.0, FC=30000 -> PRF=20000
+assertApprox('BEVN', 'BEVN-09', 'High volume low margin profit',
+  { q: 100000, prc: 1.5, vc: 1.0, fc: 30000 },
+  solveBEVNProfit({ q: 100000, prc: 1.5, vc: 1.0, fc: 30000, prf: 0 }),
+  20000, 0.01);
+
+// Test 13.10: Zero fixed cost: Q=100, PRC=10, VC=6, FC=0 -> PRF=400
+assertApprox('BEVN', 'BEVN-10', 'Zero fixed cost profit',
+  { q: 100, prc: 10, vc: 6, fc: 0 },
+  solveBEVNProfit({ q: 100, prc: 10, vc: 6, fc: 0, prf: 0 }),
+  400, 0.01);
+
+// ==========================================
+// 14. DEPR (Depreciation) Tests (10 tests)
+// ==========================================
+// Test 14.1: Straight-Line SL year 1: CST=10000, SAL=1000, n=5, j=1 -> DPJ=1800
+assertApprox('DEPR', 'DEPR-01', 'SL annual depreciation',
+  { cst: 10000, sal: 1000, n: 5, j: 1 },
+  calculateDepreciation({ method: 'SL', cst: 10000, sal: 1000, n: 5, j: 1 }).dpj,
+  1800, 0.01);
+
+// Test 14.2: Straight-Line SL accumulated at year 3: ACC = 1800 * 3 = 5400
+assertApprox('DEPR', 'DEPR-02', 'SL accumulated depreciation year 3',
+  { cst: 10000, sal: 1000, n: 5, j: 3 },
+  calculateDepreciation({ method: 'SL', cst: 10000, sal: 1000, n: 5, j: 3 }).acc,
+  5400, 0.01);
+
+// Test 14.3: Straight-Line SL book value at end: RDV = 1000
+assertApprox('DEPR', 'DEPR-03', 'SL final book value matches salvage',
+  { cst: 10000, sal: 1000, n: 5, j: 5 },
+  calculateDepreciation({ method: 'SL', cst: 10000, sal: 1000, n: 5, j: 5 }).rdv,
+  1000, 0.01);
+
+// Test 14.4: SYD year 1: Denom=15, DPJ = 9000 * (5/15) = 3000
+assertApprox('DEPR', 'DEPR-04', 'SYD year 1 depreciation',
+  { cst: 10000, sal: 1000, n: 5, j: 1 },
+  calculateDepreciation({ method: 'SYD', cst: 10000, sal: 1000, n: 5, j: 1 }).dpj,
+  3000, 0.01);
+
+// Test 14.5: SYD year 2: DPJ = 9000 * (4/15) = 2400
+assertApprox('DEPR', 'DEPR-05', 'SYD year 2 depreciation',
+  { cst: 10000, sal: 1000, n: 5, j: 2 },
+  calculateDepreciation({ method: 'SYD', cst: 10000, sal: 1000, n: 5, j: 2 }).dpj,
+  2400, 0.01);
+
+// Test 14.6: SYD accumulated year 2: ACC = 3000 + 2400 = 5400
+assertApprox('DEPR', 'DEPR-06', 'SYD accumulated year 2',
+  { cst: 10000, sal: 1000, n: 5, j: 2 },
+  calculateDepreciation({ method: 'SYD', cst: 10000, sal: 1000, n: 5, j: 2 }).acc,
+  5400, 0.01);
+
+// Test 14.7: SYD final book value: RDV = 1000
+assertApprox('DEPR', 'DEPR-07', 'SYD final book value',
+  { cst: 10000, sal: 1000, n: 5, j: 5 },
+  calculateDepreciation({ method: 'SYD', cst: 10000, sal: 1000, n: 5, j: 5 }).rdv,
+  1000, 0.01);
+
+// Test 14.8: Declining Balance (DB) year 1: 10000 * (2/5 = 40%) = 4000
+assertApprox('DEPR', 'DEPR-08', 'DB year 1 depreciation',
+  { cst: 10000, sal: 1000, n: 5, j: 1 },
+  calculateDepreciation({ method: 'DB', cst: 10000, sal: 1000, n: 5, j: 1 }).dpj,
+  4000, 0.01);
+
+// Test 14.9: Declining Balance (DB) year 2: 6000 * 40% = 2400
+assertApprox('DEPR', 'DEPR-09', 'DB year 2 depreciation',
+  { cst: 10000, sal: 1000, n: 5, j: 2 },
+  calculateDepreciation({ method: 'DB', cst: 10000, sal: 1000, n: 5, j: 2 }).dpj,
+  2400, 0.01);
+
+// Test 14.10: Declining Balance (DB) book value year 2: 10000 - 4000 - 2400 = 3600
+assertApprox('DEPR', 'DEPR-10', 'DB book value year 2',
+  { cst: 10000, sal: 1000, n: 5, j: 2 },
+  calculateDepreciation({ method: 'DB', cst: 10000, sal: 1000, n: 5, j: 2 }).rdv,
+  3600, 0.01);
+
+// ==========================================
+// 15. DAYS (Date & Day Calculation) Tests (10 tests)
+// ==========================================
+// Test 15.1: Actual days in full year: 2026.0101 to 2027.0101 = 365
+assertApprox('DAYS', 'DAYS-01', 'Actual days in standard year',
+  {}, calculateDaysBetween('2026.0101', '2027.0101', '365'), 365, 0.01);
+
+// Test 15.2: 30/360 days in standard year = 360
+assertApprox('DAYS', 'DAYS-02', '30/360 days in standard year',
+  {}, calculateDaysBetween('2026.0101', '2027.0101', '360'), 360, 0.01);
+
+// Test 15.3: Exact month days (July = 31 days)
+assertApprox('DAYS', 'DAYS-03', 'July actual days',
+  {}, calculateDaysBetween('2026.0701', '2026.0801', '365'), 31, 0.01);
+
+// Test 15.4: 30/360 month days (July = 30 days)
+assertApprox('DAYS', 'DAYS-04', 'July in 30/360 basis',
+  {}, calculateDaysBetween('2026.0701', '2026.0801', '360'), 30, 0.01);
+
+// Test 15.5: February 2024 (Leap year = 29 days)
+assertApprox('DAYS', 'DAYS-05', 'Leap year February days',
+  {}, calculateDaysBetween('2024.0201', '2024.0301', '365'), 29, 0.01);
+
+// Test 15.6: February 2026 (Common year = 28 days)
+assertApprox('DAYS', 'DAYS-06', 'Common year February days',
+  {}, calculateDaysBetween('2026.0201', '2026.0301', '365'), 28, 0.01);
+
+// Test 15.7: Same day = 0 days
+assertApprox('DAYS', 'DAYS-07', 'Same date difference',
+  {}, calculateDaysBetween('2026.0515', '2026.0515', '365'), 0, 0.01);
+
+// Test 15.8: Add 30 days to date
+assertApprox('DAYS', 'DAYS-08', 'Add 30 days to 2026.0101',
+  {}, addDaysToDate('2026.0101', 30), '2026.0131');
+
+// Test 15.9: Add 365 days across year
+assertApprox('DAYS', 'DAYS-09', 'Add 365 days',
+  {}, addDaysToDate('2026.0101', 365), '2027.0101');
+
+// Test 15.10: Quarter (90 days on 30/360 basis)
+assertApprox('DAYS', 'DAYS-10', '1 Quarter 30/360 days',
+  {}, calculateDaysBetween('2026.0101', '2026.0401', '360'), 90, 0.01);
+
+// ==========================================
+// 16. BOND (Bond Pricing and Yield) Tests (10 tests)
+// ==========================================
+// Test 16.1: Par bond: CPN = 5%, YLD = 5% -> Price = 100
+assertApprox('BOND', 'BOND-01', 'Par bond trades at 100',
+  { cpn: 5, yld: 5 },
+  solveBondPrice({ couponsPerYear: 1, d1: '2026.0101', d2: '2031.0101', rdv: 100, cpn: 5, yld: 5, prc: 0 }),
+  100.0, 0.05);
+
+// Test 16.2: Discount bond: CPN = 4%, YLD = 6% -> Price < 100
+assertApprox('BOND', 'BOND-02', 'Discount bond 5-year 4% cpn at 6% yld',
+  { cpn: 4, yld: 6 },
+  solveBondPrice({ couponsPerYear: 1, d1: '2026.0101', d2: '2031.0101', rdv: 100, cpn: 4, yld: 6, prc: 0 }),
+  91.575, 0.1);
+
+// Test 16.3: Premium bond: CPN = 7%, YLD = 5% -> Price > 100
+assertApprox('BOND', 'BOND-03', 'Premium bond 5-year 7% cpn at 5% yld',
+  { cpn: 7, yld: 5 },
+  solveBondPrice({ couponsPerYear: 1, d1: '2026.0101', d2: '2031.0101', rdv: 100, cpn: 7, yld: 5, prc: 0 }),
+  108.659, 0.1);
+
+// Test 16.4: Semi-annual par bond: CPN=6%, YLD=6% -> Price = 100
+assertApprox('BOND', 'BOND-04', 'Semi-annual par bond',
+  { cpn: 6, yld: 6 },
+  solveBondPrice({ couponsPerYear: 2, d1: '2026.0101', d2: '2036.0101', rdv: 100, cpn: 6, yld: 6, prc: 0 }),
+  100.0, 0.05);
+
+// Test 16.5: Zero-coupon bond: CPN = 0%, YLD = 5%, 5-year -> 100 / (1.05)^5 = 78.35
+assertApprox('BOND', 'BOND-05', 'Zero-coupon 5-year bond',
+  { cpn: 0, yld: 5 },
+  solveBondPrice({ couponsPerYear: 1, d1: '2026.0101', d2: '2031.0101', rdv: 100, cpn: 0, yld: 5, prc: 0 }),
+  78.35, 0.1);
+
+// Test 16.6: Solve Yield for par bond: Price=100, CPN=5% -> YLD = 5%
+assertApprox('BOND', 'BOND-06', 'Solve yield for par bond',
+  { prc: 100, cpn: 5 },
+  solveBondYield({ couponsPerYear: 1, d1: '2026.0101', d2: '2031.0101', rdv: 100, cpn: 5, yld: 0, prc: 100 }),
+  5.0, 0.01);
+
+// Test 16.7: Solve Yield for discount bond: Price=91.575 -> YLD = 6%
+assertApprox('BOND', 'BOND-07', 'Solve yield for discount bond',
+  { prc: 91.575, cpn: 4 },
+  solveBondYield({ couponsPerYear: 1, d1: '2026.0101', d2: '2031.0101', rdv: 100, cpn: 4, yld: 0, prc: 91.575 }),
+  6.0, 0.02);
+
+// Test 16.8: Solve Yield for premium bond: Price=108.66 -> YLD = 5%
+assertApprox('BOND', 'BOND-08', 'Solve yield for premium bond',
+  { prc: 108.66, cpn: 7 },
+  solveBondYield({ couponsPerYear: 1, d1: '2026.0101', d2: '2031.0101', rdv: 100, cpn: 7, yld: 0, prc: 108.66 }),
+  5.0, 0.02);
+
+// Test 16.9: 10-year semi-annual coupon bond pricing
+assertApprox('BOND', 'BOND-09', '10-year semi-annual coupon bond',
+  { cpn: 4, yld: 5 },
+  solveBondPrice({ couponsPerYear: 2, d1: '2026.0101', d2: '2036.0101', rdv: 100, cpn: 4, yld: 5, prc: 0 }),
+  92.205, 0.15);
+
+// Test 16.10: 1-year annual coupon bond
+assertApprox('BOND', 'BOND-10', '1-year annual bond',
+  { cpn: 8, yld: 6 },
+  solveBondPrice({ couponsPerYear: 1, d1: '2026.0101', d2: '2027.0101', rdv: 100, cpn: 8, yld: 6, prc: 0 }),
+  101.887, 0.05);
+
+// ==========================================
 // Print Summary
 // ==========================================
 const totalTests = results.length;
@@ -745,7 +987,7 @@ if (failedTests.length > 0) {
     console.error(`- [${f.testId}] ${f.category} - ${f.name}: Expected ${f.expected}, got ${f.actual}`);
   }
 } else {
-  console.log('ALL 120 TESTS PASSED WITH 100% ACCURACY!');
+  console.log('ALL 160 TESTS PASSED WITH 100% ACCURACY!');
 }
 
 export { results };
