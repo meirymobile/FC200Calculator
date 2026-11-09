@@ -61,7 +61,7 @@ export const App: React.FC = () => {
 
   // View mode for mobile/desktop
   const [mobileTab, setMobileTab] = useState<'calc' | 'reports'>('calc');
-  const [layoutMode, setLayoutMode] = useState<'split' | 'calcOnly' | 'reportsOnly'>('split');
+  const [layoutMode, setLayoutMode] = useState<'split' | 'calcOnly' | 'reportsOnly'>('calcOnly');
 
   const handleSelectPreset = (preset: PresetType) => {
     const ts = Date.now();
