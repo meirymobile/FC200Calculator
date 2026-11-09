@@ -71,18 +71,18 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   // TVM (CMPD) state
   const [tvmParams, setTvmParams] = useState<TVMParams>({
     set: 'End',
-    n: 120,
+    n: 10,
     i: 5.5,
     pv: -100000,
     pmt: 0,
     fv: 0,
-    py: 12,
-    cy: 12,
+    py: 1,
+    cy: 1,
   });
 
   // Amortization parameters
   const [amortPm1, setAmortPm1] = useState(1);
-  const [amortPm2, setAmortPm2] = useState(12);
+  const [amortPm2, setAmortPm2] = useState(1);
 
   // Cash flow parameters
   const [cfParams, setCfParams] = useState<CashFlowParams>({
@@ -433,7 +433,13 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   const updateCurrentParamValue = (key: string, val: number) => {
     if (mode === 'CMPD') {
-      const updated = { ...tvmParams, [key]: val };
+      let updated: TVMParams;
+      if (key === 'py') {
+        // In Casio FC-200V, updating P/Y automatically updates C/Y to match
+        updated = { ...tvmParams, py: val, cy: val };
+      } else {
+        updated = { ...tvmParams, [key]: val };
+      }
       setTvmParams(updated);
       const amort = calculateAmortizationSummary(updated, amortPm1, amortPm2);
       onAmortizationUpdated(amort, updated);

@@ -26,13 +26,13 @@ export const App: React.FC = () => {
   const [amortizationSummary, setAmortizationSummary] = useState<AmortizationSummary | null>(null);
   const [tvmParams, setTvmParams] = useState<TVMParams>({
     set: 'End',
-    n: 120,
+    n: 10,
     i: 5.5,
     pv: -100000,
-    pmt: -1085.26,
+    pmt: 0,
     fv: 0,
-    py: 12,
-    cy: 12,
+    py: 1,
+    cy: 1,
   });
 
   const [cashFlowParams, setCashFlowParams] = useState<CashFlowParams>({

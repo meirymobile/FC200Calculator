@@ -40,3 +40,4 @@ export function formatCasioLCD(val: number | string | null | undefined): string 
 
   return formatted;
 }
+
