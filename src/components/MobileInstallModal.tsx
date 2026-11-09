@@ -57,14 +57,31 @@ export const MobileInstallModal: React.FC<MobileInstallModalProps> = ({ isOpen, 
               <h4 className="font-bold text-white text-sm">התקנה ב-Android ובניית קובץ APK:</h4>
             </div>
             
-            <div className="space-y-2 text-xs text-zinc-300">
+            <div className="space-y-3 text-xs text-zinc-300">
+              {/* Direct APK Download Button */}
+              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                <div>
+                  <div className="font-bold text-emerald-400 text-sm">הורדת קובץ APK מוכן להתקנה:</div>
+                  <div className="text-[11px] text-zinc-400">קובץ התקנה ישיר שנבנה בענן (Android Package)</div>
+                </div>
+                <a
+                  href="https://github.com/meirymobile/FC200Calculator/releases/download/v1.0.0/Casio-FC200V.apk"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all active:scale-95 whitespace-nowrap"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>הורד קובץ APK ישירות</span>
+                </a>
+              </div>
+
               <p>
                 <strong>1. התקנה מיידית דרך הדפדפן:</strong><br />
                 פתח ב-Chrome, לחץ על שלוש הנקודות בתפריט הדפדפן ובחר <strong>"התקן אפליקציה" (Install App)</strong>.
               </p>
               
               <p>
-                <strong>2. הפקת קובץ APK באמצעות Capacitor:</strong><br />
+                <strong>2. הפקת קובץ APK מקומי באמצעות Capacitor:</strong><br />
                 הפרויקט כולל תשתית Capacitor מלאה. כדי להפיק קובץ APK להתקנה ישירה (Sideload):
               </p>
               <div className="bg-zinc-900 p-2 rounded font-mono text-[11px] text-emerald-400 text-left" dir="ltr">

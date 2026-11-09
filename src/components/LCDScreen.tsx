@@ -1,5 +1,6 @@
 import React from 'react';
 import { CalculatorMode, PaymentTiming } from '../types/calculator';
+import { formatCasioLCD } from '../utils/casioFormat';
 
 interface LCDScreenProps {
   mode: CalculatorMode;
@@ -94,15 +95,15 @@ export const LCDScreen: React.FC<LCDScreenProps> = ({
         )}
       </div>
 
-      {/* Screen Line 2: Large Main Display (Param Value or Calculation Result) */}
-      <div className="h-10 sm:h-12 flex items-center justify-end font-mono text-2xl sm:text-3xl font-extrabold tracking-tight mt-1" dir="ltr">
+      {/* Screen Line 2: Large Main Display (Param Value or Calculation Result) with full 10-digit precision */}
+      <div className="h-10 sm:h-12 flex items-center justify-end font-mono text-xl sm:text-2xl font-extrabold tracking-tight mt-1" dir="ltr">
         {isEditing ? (
           <div className="flex items-center">
             <span>{editValue || '0'}</span>
             <span className="inline-block w-2.5 h-6 bg-[#142017] ml-0.5 animate-pulse" />
           </div>
         ) : (
-          <div className="truncate">{paramValue || '0'}</div>
+          <div className="truncate tracking-wide">{formatCasioLCD(paramValue)}</div>
         )}
       </div>
     </div>

@@ -148,7 +148,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   useEffect(() => {
     try {
       const initialPmt = solvePMT(tvmParams);
-      const updatedTvm = { ...tvmParams, pmt: Number(initialPmt.toFixed(2)) };
+      const updatedTvm = { ...tvmParams, pmt: initialPmt };
       setTvmParams(updatedTvm);
 
       const amort = calculateAmortizationSummary(updatedTvm, amortPm1, amortPm2);
@@ -401,7 +401,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
         };
         const res = evaluateMathExpression(compExpr, evalContext);
         setAns(res);
-        setCompResult(Number(res.toFixed(8)).toString());
+        setCompResult(res.toString());
       } catch (err: any) {
         setCompResult(err.message || 'ERROR');
       }
@@ -477,35 +477,35 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
         if (key === 'pmt') {
           const res = solvePMT(tvmParams);
-          updatedParams.pmt = Number(res.toFixed(2));
+          updatedParams.pmt = res;
           setTvmParams(updatedParams);
           const sol = generateTVMSolution('pmt', updatedParams);
           onSolutionGenerated(sol);
           setStatusMessage('SOLVED PMT');
         } else if (key === 'pv') {
           const res = solvePV(tvmParams);
-          updatedParams.pv = Number(res.toFixed(2));
+          updatedParams.pv = res;
           setTvmParams(updatedParams);
           const sol = generateTVMSolution('pv', updatedParams);
           onSolutionGenerated(sol);
           setStatusMessage('SOLVED PV');
         } else if (key === 'fv') {
           const res = solveFV(tvmParams);
-          updatedParams.fv = Number(res.toFixed(2));
+          updatedParams.fv = res;
           setTvmParams(updatedParams);
           const sol = generateTVMSolution('fv', updatedParams);
           onSolutionGenerated(sol);
           setStatusMessage('SOLVED FV');
         } else if (key === 'n') {
           const res = solveN(tvmParams);
-          updatedParams.n = Number(res.toFixed(2));
+          updatedParams.n = res;
           setTvmParams(updatedParams);
           const sol = generateTVMSolution('n', updatedParams);
           onSolutionGenerated(sol);
           setStatusMessage('SOLVED n');
         } else if (key === 'i') {
           const res = solveI(tvmParams);
-          updatedParams.i = Number(res.toFixed(4));
+          updatedParams.i = res;
           setTvmParams(updatedParams);
           const sol = generateTVMSolution('i', updatedParams);
           onSolutionGenerated(sol);
@@ -555,6 +555,61 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       setStatusMessage('ERROR: ' + (err.message || 'Math ERROR'));
     }
   };
+
+  // Keyboard event listener for physical keyboard support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input element
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+
+      if (e.key >= '0' && e.key <= '9') {
+        handleInputChar(e.key);
+      } else if (e.key === '.') {
+        handleInputChar('.');
+      } else if (e.key === '+') {
+        handleInputChar('+');
+      } else if (e.key === '-') {
+        handleInputChar('-');
+      } else if (e.key === '*') {
+        handleInputChar('×');
+      } else if (e.key === '/') {
+        handleInputChar('÷');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleExe();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        handleDelete();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleClear();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleUp();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleDown();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handleUp();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleDown();
+      } else if (e.key.toLowerCase() === 's' && !isEditing) {
+        e.preventDefault();
+        handleSolve();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mode, currentItem, editValue, isEditing, tvmParams, cfParams, cnvrParams, costParams, compExpr, memory, ans, angleUnit]);
 
   return (
     <div className="flex flex-col items-center">

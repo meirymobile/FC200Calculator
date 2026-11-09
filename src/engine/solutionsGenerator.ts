@@ -53,35 +53,35 @@ export function generateTVMSolution(
     const annuityFactor = ((factor - 1) / periodicRate) * (1 + periodicRate * s);
     steps.push(`מקדם סדרת התשלומים (ערך נוכחי/עתידי של אנונה): ${annuityFactor.toFixed(5)}`);
     steps.push(`שלב 4: חילוץ התשלום התקופתי (PMT):`);
-    steps.push(`PMT = - (${pv.toLocaleString()} × ${factor.toFixed(5)} + ${fv.toLocaleString()}) / ${annuityFactor.toFixed(5)} = ${pmt.toFixed(2)} ₪`);
+    steps.push(`PMT = - (${pv.toLocaleString()} × ${factor.toFixed(5)} + ${fv.toLocaleString()}) / ${annuityFactor.toFixed(5)} = ${pmt.toFixed(6)} ₪ (מעוגל לתשלום: ${pmt.toFixed(2)} ₪)`);
     
     const totalPayments = Math.abs(pmt * n);
     const totalInterest = totalPayments - Math.abs(pv);
-    resultNote = `סה"כ תשלומים לאורך כל התקופה: ${totalPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₪. מתוכם סך עלות הריבית הכוללת: ${totalInterest.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₪.`;
+    resultNote = `תשלום תקופתי מדויק: ${pmt.toFixed(6)} ₪. סה"כ תשלומים לאורך כל התקופה: ${totalPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₪. מתוכם סך עלות הריבית הכוללת: ${totalInterest.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₪.`;
   } else if (solvedField === 'pv') {
     formula = `PV = - \\frac{FV + PMT \\cdot (1 + i \\cdot S) \\cdot \\frac{(1+i)^n - 1}{i}}{(1+i)^n}`;
     summary = `חישוב הערך הנוכחי (סכום ההלוואה או ההשקעה הראשונית) עבור סדרת תשלומים עתידית.`;
     steps.push(`שלב 3: היוון כלל התזרימים והתשלומים לנקודת ההווה:`);
-    steps.push(`ערך נוכחי מחושב: ${pv.toFixed(2)} ₪`);
-    resultNote = `הסכום הנוכחי השווה ערך לסדרת התשלומים הוא ${pv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₪.`;
+    steps.push(`ערך נוכחי מחושב במדויק: ${pv.toFixed(6)} ₪ (מעוגל: ${pv.toFixed(2)} ₪)`);
+    resultNote = `הסכום הנוכחי המדויק השווה ערך לסדרת התשלומים הוא ${pv.toFixed(6)} ₪ (${pv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₪).`;
   } else if (solvedField === 'fv') {
     formula = `FV = - \\left[ PV \\cdot (1+i)^n + PMT \\cdot (1 + i \\cdot S) \\cdot \\frac{(1+i)^n - 1}{i} \\right]`;
     summary = `חישוב החיסכון והצבירה העתידית (ערך עתידי) בתום ${n} תקופות.`;
     steps.push(`שלב 3: צבירת הריבית דריבית והתשלומים לסוף התקופה:`);
-    steps.push(`ערך עתידי מחושב: ${fv.toFixed(2)} ₪`);
-    resultNote = `הסכום שיצטבר בתום התקופה הינו ${fv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₪.`;
+    steps.push(`ערך עתידי מחושב במדויק: ${fv.toFixed(6)} ₪ (מעוגל: ${fv.toFixed(2)} ₪)`);
+    resultNote = `הסכום שיצטבר בתום התקופה הינו ${fv.toFixed(6)} ₪ (${fv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₪).`;
   } else if (solvedField === 'n') {
     formula = `n = \\frac{\\ln\\left(\\frac{A - FV}{PV + A}\\right)}{\\ln(1 + i)}, \\quad A = \\frac{PMT \\cdot (1 + i \\cdot S)}{i}`;
     summary = `חישוב משך הזמן ומספר התקופות הנדרשות לסילוק ההלוואה או השגת יעד החיסכון.`;
     steps.push(`שלב 3: חילוץ המעריך באמצעות לוגריתם טבעי (ln):`);
-    steps.push(`מספר תקופות מחושב: ${n.toFixed(2)} תקופות (${(n / py).toFixed(2)} שנים בחישוב שנתי).`);
-    resultNote = `נדרשות ${Math.ceil(n)} תקופות תשלום מלאות.`;
+    steps.push(`מספר תקופות מחושב במדויק: ${n.toFixed(6)} תקופות (${(n / py).toFixed(4)} שנים בחישוב שנתי).`);
+    resultNote = `נדרשות ${Math.ceil(n)} תקופות תשלום מלאות (${n.toFixed(6)} תקופות במדויק).`;
   } else if (solvedField === 'i') {
     formula = `PV + PMT \\cdot (1 + i \\cdot S) \\cdot \\frac{1 - (1+i)^{-n}}{i} + FV \\cdot (1+i)^{-n} = 0`;
     summary = `חילוץ שיעור התשואה / הריבית השנתית (I%) מתוך משוואת שוויון התזרימים.`;
     steps.push(`שלב 3: פתרון משוואת הפולינום מדרגה גבוהה בשיטת ניוטון-רפסון (Newton-Raphson Numerical Iteration) כפי שמבצע מחשבון ה-FC-200V:`);
-    steps.push(`הריבית השנתית המחושבת: ${i.toFixed(4)}%`);
-    resultNote = `הריבית האפקטיבית השנתית של העסקה היא ${i.toFixed(4)}%.`;
+    steps.push(`הריבית השנתית המחושבת במדויק: ${i.toFixed(6)}%`);
+    resultNote = `הריבית האפקטיבית השנתית המדויקת של העסקה היא ${i.toFixed(6)}%.`;
   }
 
   return {
