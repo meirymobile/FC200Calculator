@@ -23,6 +23,8 @@ import {
   generateAmortSolution,
   generateCashFlowSolution,
 } from '../engine/solutionsGenerator';
+import { playKeyClick, toggleSound, isSoundEnabled } from '../utils/soundEffects';
+import { Volume2, VolumeX } from 'lucide-react';
 
 interface CasioFC200VProps {
   onSolutionGenerated: (solution: StepExplanation) => void;
@@ -42,6 +44,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   const [isShift, setIsShift] = useState(false);
   const [isAlpha, setIsAlpha] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [soundOn, setSoundOn] = useState<boolean>(isSoundEnabled());
 
   // TVM (CMPD) state with sensible default sample values
   const [tvmParams, setTvmParams] = useState<TVMParams>({
@@ -189,6 +192,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // Up & Down navigation in parameter menu
   const handleUp = () => {
+    playKeyClick('func');
     if (mode === 'COMP') return;
     setIsEditing(false);
     setEditValue('');
@@ -196,6 +200,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   };
 
   const handleDown = () => {
+    playKeyClick('func');
     if (mode === 'COMP') return;
     setIsEditing(false);
     setEditValue('');
@@ -204,6 +209,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // Switch mode
   const handleSelectMode = (newMode: CalculatorMode) => {
+    playKeyClick('func');
     setMode(newMode);
     setIsEditing(false);
     setEditValue('');
@@ -213,6 +219,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // Append character/digit
   const handleInputChar = (char: string) => {
+    playKeyClick('num');
     if (mode === 'COMP') {
       setCompExpr((prev) => prev + char);
       return;
@@ -228,6 +235,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // Backspace / DEL
   const handleDelete = () => {
+    playKeyClick('del');
     if (mode === 'COMP') {
       setCompExpr((prev) => prev.slice(0, -1));
       return;
@@ -244,6 +252,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // AC / Clear
   const handleClear = () => {
+    playKeyClick('del');
     if (mode === 'COMP') {
       setCompExpr('');
       setCompResult('0');
@@ -256,6 +265,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // Toggle negative sign
   const handleToggleSign = () => {
+    playKeyClick('num');
     if (mode === 'COMP') {
       handleInputChar('(-)');
       return;
@@ -278,6 +288,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // EXE button: commit current input or calculate COMP expression
   const handleExe = () => {
+    playKeyClick('func');
     if (mode === 'COMP') {
       try {
         const res = evaluateMathExpression(compExpr);
@@ -346,6 +357,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // SOLVE button: the magic key of FC-200V
   const handleSolve = () => {
+    playKeyClick('solve');
     if (mode === 'COMP') {
       handleExe();
       return;
@@ -452,13 +464,23 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
               FC-200V
             </span>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-[9px] uppercase tracking-wider text-amber-500/90 font-bold">
-              Financial Consultant
-            </span>
-            <span className="text-[8px] text-zinc-400 tracking-tight">
-              TWO WAY POWER
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] uppercase tracking-wider text-amber-500/90 font-bold">
+                Financial Consultant
+              </span>
+              <span className="text-[8px] text-zinc-400 tracking-tight">
+                TWO WAY POWER
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSoundOn(toggleSound())}
+              className="p-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+              title={soundOn ? 'השתק צליל מקשים' : 'הפעל צליל מקשים'}
+            >
+              {soundOn ? <Volume2 className="w-3.5 h-3.5 text-blue-400" /> : <VolumeX className="w-3.5 h-3.5 text-zinc-500" />}
+            </button>
           </div>
         </div>
 
