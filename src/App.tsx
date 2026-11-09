@@ -3,6 +3,7 @@ import { CasioFC200V } from './components/CasioFC200V';
 import { ReportsPanel } from './components/ReportsPanel';
 import { UserGuideModal } from './components/UserGuideModal';
 import { MobileInstallModal } from './components/MobileInstallModal';
+import { FinancialPresets, PresetType } from './components/FinancialPresets';
 import {
   StepExplanation,
   AmortizationSummary,
@@ -46,6 +47,14 @@ export const App: React.FC = () => {
   });
   const [cashFlowResults, setCashFlowResults] = useState<CashFlowResults | null>(null);
 
+  const [presetData, setPresetData] = useState<{
+    mode: 'COMP' | 'CMPD' | 'AMORT' | 'CASH' | 'CNVR' | 'COST' | 'DAYS' | 'DEPR' | 'BOND' | 'BEVN';
+    tvm?: TVMParams;
+    cash?: CashFlowParams;
+    solvedField?: 'n' | 'i' | 'pv' | 'pmt' | 'fv';
+    timestamp: number;
+  } | undefined>(undefined);
+
   // Modals state
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
@@ -53,6 +62,63 @@ export const App: React.FC = () => {
   // View mode for mobile/desktop
   const [mobileTab, setMobileTab] = useState<'calc' | 'reports'>('calc');
   const [layoutMode, setLayoutMode] = useState<'split' | 'calcOnly' | 'reportsOnly'>('split');
+
+  const handleSelectPreset = (preset: PresetType) => {
+    const ts = Date.now();
+    if (preset === 'mortgage') {
+      const tvm: TVMParams = {
+        set: 'End',
+        n: 300,
+        i: 4.8,
+        pv: -1000000,
+        pmt: 0,
+        fv: 0,
+        py: 12,
+        cy: 12,
+      };
+      setTvmParams(tvm);
+      setPresetData({ mode: 'CMPD', tvm, solvedField: 'pmt', timestamp: ts });
+    } else if (preset === 'car') {
+      const tvm: TVMParams = {
+        set: 'End',
+        n: 60,
+        i: 6.0,
+        pv: -120000,
+        pmt: 0,
+        fv: 0,
+        py: 12,
+        cy: 12,
+      };
+      setTvmParams(tvm);
+      setPresetData({ mode: 'CMPD', tvm, solvedField: 'pmt', timestamp: ts });
+    } else if (preset === 'savings') {
+      const tvm: TVMParams = {
+        set: 'End',
+        n: 240,
+        i: 7.0,
+        pv: 0,
+        pmt: -2000,
+        fv: 0,
+        py: 12,
+        cy: 12,
+      };
+      setTvmParams(tvm);
+      setPresetData({ mode: 'CMPD', tvm, solvedField: 'fv', timestamp: ts });
+    } else if (preset === 'cashflow') {
+      const cash: CashFlowParams = {
+        rate: 8.5,
+        cf0: -100000,
+        flows: [
+          { id: '1', flow: 25000, frequency: 1 },
+          { id: '2', flow: 35000, frequency: 1 },
+          { id: '3', flow: 45000, frequency: 1 },
+          { id: '4', flow: 50000, frequency: 1 },
+        ],
+      };
+      setCashFlowParams(cash);
+      setPresetData({ mode: 'CASH', cash, timestamp: ts });
+    }
+  };
 
   const handleSolutionGenerated = (solution: StepExplanation) => {
     setCurrentSolution(solution);
@@ -184,6 +250,9 @@ export const App: React.FC = () => {
 
       {/* Main Studio Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 flex flex-col justify-center">
+        {/* Quick Presets Bar */}
+        <FinancialPresets onSelectPreset={handleSelectPreset} />
+
         {/* Responsive Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
@@ -199,6 +268,7 @@ export const App: React.FC = () => {
                 onAmortizationUpdated={handleAmortizationUpdated}
                 onCashFlowUpdated={handleCashFlowUpdated}
                 onOpenMobileGuide={() => setIsMobileModalOpen(true)}
+                presetData={presetData}
               />
             </div>
           )}
