@@ -772,18 +772,6 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
             EXE
           </button>
         </div>
-
-        {/* Bottom subtle model details & Mobile Install helper */}
-        <div className="mt-4 pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[10px] text-zinc-400">
-          <span>Casio FC-200V Emulation Engine</span>
-          <button
-            type="button"
-            onClick={onOpenMobileGuide}
-            className="text-blue-400 hover:text-blue-300 font-semibold underline"
-          >
-            התקנה לאייפון / אנדרואיד 📱
-          </button>
-        </div>
       </div>
     </div>
   );

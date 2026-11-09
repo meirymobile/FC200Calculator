@@ -188,42 +188,38 @@ export const App: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* CALCULATOR COLUMN */}
-          <div
-            className={`flex justify-center transition-all ${
-              layoutMode === 'calcOnly'
-                ? 'lg:col-span-12'
-                : layoutMode === 'reportsOnly'
-                ? 'hidden'
-                : 'lg:col-span-5'
-            } ${mobileTab === 'reports' ? 'hidden lg:flex' : 'flex'}`}
-          >
-            <CasioFC200V
-              onSolutionGenerated={handleSolutionGenerated}
-              onAmortizationUpdated={handleAmortizationUpdated}
-              onCashFlowUpdated={handleCashFlowUpdated}
-              onOpenMobileGuide={() => setIsMobileModalOpen(true)}
-            />
-          </div>
+          {layoutMode !== 'reportsOnly' && (
+            <div
+              className={`flex justify-center transition-all ${
+                layoutMode === 'calcOnly' ? 'lg:col-span-12' : 'lg:col-span-5'
+              } ${mobileTab === 'reports' ? 'hidden lg:flex' : 'flex'}`}
+            >
+              <CasioFC200V
+                onSolutionGenerated={handleSolutionGenerated}
+                onAmortizationUpdated={handleAmortizationUpdated}
+                onCashFlowUpdated={handleCashFlowUpdated}
+                onOpenMobileGuide={() => setIsMobileModalOpen(true)}
+              />
+            </div>
+          )}
 
           {/* REPORTS & EXCEL STUDIO COLUMN */}
-          <div
-            className={`transition-all ${
-              layoutMode === 'reportsOnly'
-                ? 'lg:col-span-12'
-                : layoutMode === 'calcOnly'
-                ? 'hidden'
-                : 'lg:col-span-7'
-            } ${mobileTab === 'calc' ? 'hidden lg:block' : 'block'} min-h-[600px]`}
-          >
-            <ReportsPanel
-              currentSolution={currentSolution}
-              amortizationSummary={amortizationSummary}
-              tvmParams={tvmParams}
-              cashFlowParams={cashFlowParams}
-              cashFlowResults={cashFlowResults}
-              onOpenMobileGuide={() => setIsMobileModalOpen(true)}
-            />
-          </div>
+          {layoutMode !== 'calcOnly' && (
+            <div
+              className={`transition-all ${
+                layoutMode === 'reportsOnly' ? 'lg:col-span-12' : 'lg:col-span-7'
+              } ${mobileTab === 'calc' ? 'hidden lg:block' : 'block'} min-h-[600px]`}
+            >
+              <ReportsPanel
+                currentSolution={currentSolution}
+                amortizationSummary={amortizationSummary}
+                tvmParams={tvmParams}
+                cashFlowParams={cashFlowParams}
+                cashFlowResults={cashFlowResults}
+                onOpenMobileGuide={() => setIsMobileModalOpen(true)}
+              />
+            </div>
+          )}
 
         </div>
       </main>

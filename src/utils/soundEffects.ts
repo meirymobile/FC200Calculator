@@ -79,3 +79,4 @@ export function playKeyClick(type: 'num' | 'func' | 'solve' | 'del' = 'num') {
     // ignore audio errors
   }
 }
+
