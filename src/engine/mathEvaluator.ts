@@ -42,3 +42,4 @@ export function evaluateMathExpression(expr: string): number {
     throw new Error('שגיאת תחביר (Syntax ERROR)');
   }
 }
+

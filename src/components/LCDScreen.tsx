@@ -108,3 +108,4 @@ export const LCDScreen: React.FC<LCDScreenProps> = ({
     </div>
   );
 };
+

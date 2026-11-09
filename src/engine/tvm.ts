@@ -179,3 +179,4 @@ export function solveI(params: TVMParams): number {
 
   return periodicRateToAnnual(mid, py, cy);
 }
+

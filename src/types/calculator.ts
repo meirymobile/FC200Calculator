@@ -84,3 +84,4 @@ export interface StepExplanation {
   steps: string[];
   resultNote: string;
 }
+

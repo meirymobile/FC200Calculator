@@ -153,3 +153,4 @@ export function solveCashFlow(params: CashFlowParams): CashFlowResults {
     nfv: Number(nfv.toFixed(2)),
   };
 }
+

@@ -21,3 +21,4 @@ export function effToApr(eff: number, n: number): number {
   const aprDecimal = n * (Math.pow(1 + effDec, 1 / n) - 1);
   return Number((aprDecimal * 100).toFixed(4));
 }
+

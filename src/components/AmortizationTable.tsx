@@ -190,3 +190,4 @@ export const AmortizationTable: React.FC<AmortizationTableProps> = ({
     </div>
   );
 };
+

@@ -91,3 +91,4 @@ export const MobileInstallModal: React.FC<MobileInstallModalProps> = ({ isOpen, 
     </div>
   );
 };
+

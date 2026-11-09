@@ -766,3 +766,4 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     </div>
   );
 };
+

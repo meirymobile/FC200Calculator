@@ -186,3 +186,4 @@ export function generateCashFlowSolution(
     resultNote: `דוח תזרים המזומנים המלא כולל טבלאות מפורטות זמין לייצוא לאקסל.`,
   };
 }
+

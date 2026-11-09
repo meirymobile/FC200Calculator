@@ -85,3 +85,4 @@ npm run build
   npx cap open android
   ```
   בחלון ה-Android Studio שייפתח: לחץ בתפריט העליון על **Build > Build Bundle(s) / APK(s) > Build APK(s)** כדי לקבל קובץ `.apk` מוכן להתקנה ישירה על כל מכשיר אנדרואיד.
+

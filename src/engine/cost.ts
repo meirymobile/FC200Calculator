@@ -16,3 +16,4 @@ export function solveCost(sell: number, margin: number): number {
   const cost = sell * (1 - margin / 100);
   return Number(cost.toFixed(4));
 }
+
