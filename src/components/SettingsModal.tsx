@@ -21,6 +21,7 @@ import {
   toggleHaptics,
   isHapticsEnabled,
   triggerHaptic,
+  playKeyClick,
 } from '../utils/soundEffects';
 
 interface SettingsModalProps {
@@ -230,7 +231,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => {
-              setSoundOn(toggleSound());
+              const next = toggleSound();
+              setSoundOn(next);
+              if (next) playKeyClick('func');
             }}
             className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 flex items-center justify-between text-xs font-bold text-zinc-200 transition-colors"
           >

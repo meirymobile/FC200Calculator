@@ -913,8 +913,9 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  playKeyClick('func');
-                  setSoundOn(toggleSound());
+                  const next = toggleSound();
+                  setSoundOn(next);
+                  if (next) playKeyClick('func');
                 }}
                 className="p-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
                 title={soundOn ? 'השתק צליל מקשים' : 'הפעל צליל מקשים'}
