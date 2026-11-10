@@ -14,7 +14,7 @@ export const DpadNavigation: React.FC<DpadNavigationProps> = ({
   onRight,
 }) => {
   return (
-    <div className="relative flex items-center justify-center select-none py-1">
+    <div dir="ltr" style={{ direction: 'ltr' }} className="relative flex items-center justify-center select-none py-1">
       {/* Outer Black Cross / Diamond D-Pad Housing matching FC-200V 2nd edition */}
       <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center">
         {/* Diamond / Cross Matte Black Pad with concentric ring texture */}

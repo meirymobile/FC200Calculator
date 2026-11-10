@@ -51,3 +51,4 @@ export function solveSMPLDays(pv: number, i: number, si: number, basis: '365' | 
   if (pvAbs === 0 || i === 0) throw new Error('Principal and interest rate must be non-zero');
   return Math.round((si * b) / (pvAbs * (i / 100)));
 }
+

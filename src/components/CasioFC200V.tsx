@@ -872,9 +872,9 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   }, [mode, currentItem, editValue, isEditing, tvmParams, cfParams, cnvrParams, costParams, compExpr, memory, ans, angleUnit]);
 
   return (
-    <div className="flex flex-col items-center">
+    <div dir="ltr" style={{ direction: 'ltr' }} className="flex flex-col items-center">
       {/* Outer Calculator Matte Black Chassis with subtle side curvature matching 2nd edition */}
-      <div className="relative w-full max-w-[400px] sm:max-w-[425px] rounded-[32px] bg-[#17181c] p-3.5 sm:p-5 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.06),inset_0_1px_2px_rgba(255,255,255,0.12)] border border-[#26282e] select-none">
+      <div dir="ltr" style={{ direction: 'ltr' }} className="relative w-full max-w-[400px] sm:max-w-[425px] rounded-[32px] bg-[#17181c] p-3.5 sm:p-5 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.06),inset_0_1px_2px_rgba(255,255,255,0.12)] border border-[#26282e] select-none">
         
         {/* Authentic Top Header matching photo: CASIO FC-200V FINANCIAL CONSULTANT | SOLAR PANEL | 2nd edition */}
         <div className="flex items-center justify-between pb-2 pt-0.5 border-b border-zinc-800/80 mb-3 px-1">

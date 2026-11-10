@@ -125,3 +125,4 @@ export function calculate2VarStats(pairs: { x: number; y: number }[]): Stat2VarR
     r,
   };
 }
+

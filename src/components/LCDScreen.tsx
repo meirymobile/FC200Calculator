@@ -34,7 +34,7 @@ export const LCDScreen: React.FC<LCDScreenProps> = ({
   compExpression,
 }) => {
   return (
-    <div className="relative w-full rounded-md p-3 sm:p-4 bg-[#92a494] shadow-[inset_0_3px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.15)] border-2 border-[#121413] text-[#142017] font-['Share_Tech_Mono',monospace] select-none overflow-hidden">
+    <div dir="ltr" style={{ direction: 'ltr' }} className="relative w-full rounded-md p-3 sm:p-4 bg-[#92a494] shadow-[inset_0_3px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.15)] border-2 border-[#121413] text-[#142017] font-['Share_Tech_Mono',monospace] select-none overflow-hidden">
       {/* Subtle LCD pixel grid overlay */}
       <div
         className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:3px_3px]"
