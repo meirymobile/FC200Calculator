@@ -72,3 +72,4 @@ export function addDaysToDate(d1Str: string, days: number): string {
   const targetTime = p1.date.getTime() + days * (1000 * 60 * 60 * 24);
   return formatCasioDate(new Date(targetTime));
 }
+

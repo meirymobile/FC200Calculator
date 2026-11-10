@@ -73,3 +73,4 @@ export function calculateDepreciation(p: DepreciationParams): DepreciationResult
 
   return { dpj, rdv: bookValue, acc };
 }
+

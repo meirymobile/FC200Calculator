@@ -1,8 +1,11 @@
 export type CalculatorMode =
   | 'COMP'
   | 'CMPD'
-  | 'AMORT'
+  | 'SMPL'
   | 'CASH'
+  | 'AMRT'
+  | 'AMORT'
+  | 'STAT'
   | 'CNVR'
   | 'COST'
   | 'DAYS'

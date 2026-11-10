@@ -34,6 +34,15 @@ import {
 import { calculateDaysBetween, addDaysToDate, DayBasis } from '../engine/days';
 import { solveBondPrice, solveBondYield, BondParams } from '../engine/bond';
 import {
+  solveSMPLInterest,
+  solveSMPLFutureValue,
+  solveSMPLPrincipal,
+  solveSMPLRate,
+  solveSMPLDays,
+  SMPLParams,
+} from '../engine/smpl';
+import { calculate1VarStats, calculate2VarStats } from '../engine/stat';
+import {
   generateTVMSolution,
   generateAmortSolution,
   generateCashFlowSolution,
@@ -67,10 +76,14 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   const [isShift, setIsShift] = useState(false);
   const [isAlpha, setIsAlpha] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
-  const [soundOn, setSoundOn] = useState<boolean>(isSoundEnabled());
   const [angleUnit, setAngleUnit] = useState<'DEG' | 'RAD'>('DEG');
+  const [soundOn, setSoundOn] = useState<boolean>(isSoundEnabled());
 
-  // Memory registers
+  // Short Cut register memory
+  const [shortCut1, setShortCut1] = useState<CalculatorMode>('CMPD');
+  const [shortCut2, setShortCut2] = useState<CalculatorMode>('AMRT');
+
+  // Memory Registers (A, B, C, D, X, Y, M)
   const [memory, setMemory] = useState<Record<string, number>>({
     A: 0,
     B: 0,
@@ -82,8 +95,9 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   });
   const [ans, setAns] = useState<number>(0);
   const [isStoreMode, setIsStoreMode] = useState(false);
+  const [isRecallMode, setIsRecallMode] = useState(false);
 
-  // TVM (CMPD) state
+  // TVM (CMPD) state (P/Y=1, C/Y=1 default)
   const [tvmParams, setTvmParams] = useState<TVMParams>({
     set: 'End',
     n: 10,
@@ -93,6 +107,14 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     fv: 0,
     py: 1,
     cy: 1,
+  });
+
+  // SMPL (Simple Interest) state
+  const [smplParams, setSmplParams] = useState<SMPLParams>({
+    set: '365',
+    dys: 100,
+    i: 5.0,
+    pv: -100000,
   });
 
   // Amortization parameters
@@ -161,6 +183,9 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     prc: 100,
   });
 
+  // STAT parameters
+  const [statData, setStatData] = useState<number[]>([10, 20, 30, 40, 50]);
+
   // COMP Mode expression
   const [compExpr, setCompExpr] = useState<string>('');
   const [compResult, setCompResult] = useState<string>('0');
@@ -226,6 +251,18 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   const getMenuItems = (): MenuItem[] => {
     switch (mode) {
+      case 'SMPL': {
+        const si = solveSMPLInterest(smplParams);
+        const sfv = solveSMPLFutureValue(smplParams);
+        return [
+          { key: 'smpl_set', label: 'Set', value: smplParams.set, canSolve: false },
+          { key: 'smpl_dys', label: 'Dys', value: smplParams.dys, canSolve: true },
+          { key: 'smpl_i', label: 'I%', value: `${smplParams.i}`, canSolve: true },
+          { key: 'smpl_pv', label: 'PV', value: `${smplParams.pv}`, canSolve: true },
+          { key: 'smpl_si', label: 'SI', value: si, canSolve: true },
+          { key: 'smpl_sfv', label: 'SFV', value: sfv, canSolve: true },
+        ];
+      }
       case 'CMPD':
         return [
           { key: 'set', label: 'Set', value: tvmParams.set, canSolve: false, isTiming: true },
@@ -237,6 +274,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
           { key: 'py', label: 'P/Y', value: tvmParams.py, canSolve: false },
           { key: 'cy', label: 'C/Y', value: tvmParams.cy, canSolve: false },
         ];
+      case 'AMRT':
       case 'AMORT': {
         const amort = calculateAmortizationSummary(tvmParams, amortPm1, amortPm2);
         return [
@@ -264,6 +302,19 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
           { key: 'irr', label: 'IRR', value: res.irr !== null ? `${res.irr}%` : 'ERR', canSolve: true },
           { key: 'pbp', label: 'PBP', value: res.pbp !== null ? res.pbp : 'ERR', canSolve: true },
           { key: 'nfv', label: 'NFV', value: res.nfv, canSolve: true },
+        ];
+      }
+      case 'STAT': {
+        const stats = calculate1VarStats(statData);
+        return [
+          { key: 'stat_n', label: 'n', value: stats.n, canSolve: false },
+          { key: 'stat_xbar', label: 'x̄', value: stats.mean, canSolve: true },
+          { key: 'stat_sumx', label: 'Σx', value: stats.sumX, canSolve: true },
+          { key: 'stat_sumx2', label: 'Σx²', value: stats.sumX2, canSolve: true },
+          { key: 'stat_sx', label: 'sx', value: stats.sx, canSolve: true },
+          { key: 'stat_sigmax', label: 'σx', value: stats.sigmaX, canSolve: true },
+          { key: 'stat_min', label: 'minX', value: stats.minX, canSolve: false },
+          { key: 'stat_max', label: 'maxX', value: stats.maxX, canSolve: false },
         ];
       }
       case 'CNVR':
@@ -364,6 +415,19 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       return;
     }
 
+    // Handle variable recall if RCL was pressed
+    if (isRecallMode && ['A', 'B', 'C', 'D', 'X', 'Y', 'M'].includes(char)) {
+      const recalled = memory[char] ?? 0;
+      setIsRecallMode(false);
+      setStatusMessage(`RCL ${char}: ${recalled}`);
+      if (mode === 'COMP') {
+        setCompExpr((prev) => prev + recalled.toString());
+      } else {
+        updateCurrentParamValue(currentItem.key, recalled);
+      }
+      return;
+    }
+
     if (mode === 'COMP') {
       setCompExpr((prev) => prev + char);
       return;
@@ -405,43 +469,13 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       setEditValue('');
       setStatusMessage('');
     }
-    setIsShift(false);
-    setIsAlpha(false);
-    setIsStoreMode(false);
   };
 
-  // Toggle negative sign
-  const handleToggleSign = () => {
-    playKeyClick('num');
-    if (mode === 'COMP') {
-      handleInputChar('(-)');
-      return;
-    }
-    if (isEditing) {
-      if (editValue.startsWith('-')) {
-        setEditValue(editValue.substring(1));
-      } else {
-        setEditValue('-' + editValue);
-      }
-    } else {
-      const curStr = String(currentItem.value);
-      const numVal = parseFloat(curStr);
-      if (!isNaN(numVal)) {
-        setIsEditing(true);
-        setEditValue(String(-numVal));
-      }
-    }
-  };
-
-  // Handle scientific function insertion
-  const handleScientific = (
-    normal: string,
-    shiftVal?: string,
-    alphaVal?: string
-  ) => {
+  // Scientific functions via Shift
+  const handleScientific = (val: string, shiftVal?: string, alphaVal?: string) => {
     playKeyClick('func');
+    let toInsert = val;
 
-    let toInsert = normal;
     if (isShift && shiftVal) {
       toInsert = shiftVal;
       setIsShift(false);
@@ -450,28 +484,62 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       setIsAlpha(false);
     }
 
+    if (toInsert === 'DEG/RAD') {
+      const newUnit = angleUnit === 'DEG' ? 'RAD' : 'DEG';
+      setAngleUnit(newUnit);
+      setStatusMessage(`ANGLE: ${newUnit}`);
+      return;
+    }
+
+    if (toInsert === 'CLR') {
+      setMemory({ A: 0, B: 0, C: 0, D: 0, X: 0, Y: 0, M: 0 });
+      setAns(0);
+      setCompExpr('');
+      setCompResult('0');
+      setStatusMessage('MEM CLEARED');
+      return;
+    }
+
     if (toInsert === 'STO') {
       setIsStoreMode(true);
-      setStatusMessage('STO');
+      setStatusMessage('STO: PRESS A-D, X, Y, M');
       return;
     }
 
     if (toInsert === 'RCL') {
-      setStatusMessage('RCL');
+      setIsRecallMode(true);
+      setStatusMessage('RCL: PRESS A-D, X, Y, M');
       return;
     }
 
-    if (toInsert === 'DEG/RAD') {
-      const nextUnit = angleUnit === 'DEG' ? 'RAD' : 'DEG';
-      setAngleUnit(nextUnit);
-      setStatusMessage(`ANGLE: ${nextUnit}`);
+    if (toInsert === 'M+') {
+      const currentVal = mode === 'COMP' ? parseFloat(compResult) || 0 : parseFloat(String(currentItem.value)) || 0;
+      setMemory((prev) => ({ ...prev, M: prev.M + currentVal }));
+      setStatusMessage(`M+ (${memory.M + currentVal})`);
       return;
     }
 
-    handleInputChar(toInsert);
+    if (toInsert === 'M-') {
+      const currentVal = mode === 'COMP' ? parseFloat(compResult) || 0 : parseFloat(String(currentItem.value)) || 0;
+      setMemory((prev) => ({ ...prev, M: prev.M - currentVal }));
+      setStatusMessage(`M- (${memory.M - currentVal})`);
+      return;
+    }
+
+    if (mode === 'COMP') {
+      setCompExpr((prev) => prev + toInsert);
+    } else {
+      // In menu mode, if it's a number/operator
+      if (!isEditing) {
+        setIsEditing(true);
+        setEditValue(toInsert);
+      } else {
+        setEditValue((prev) => prev + toInsert);
+      }
+    }
   };
 
-  // EXE button: commit current input or calculate COMP expression
+  // EXE button (Commit parameter or evaluate formula)
   const handleExe = () => {
     playKeyClick('func');
     if (mode === 'COMP') {
@@ -497,6 +565,11 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       setTvmParams(updatedTvm);
       const amort = calculateAmortizationSummary(updatedTvm, amortPm1, amortPm2);
       onAmortizationUpdated(amort, updatedTvm);
+      return;
+    }
+
+    if (currentItem.key === 'smpl_set') {
+      setSmplParams((p) => ({ ...p, set: p.set === '365' ? '360' : '365' }));
       return;
     }
 
@@ -537,7 +610,10 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       setTvmParams(updated);
       const amort = calculateAmortizationSummary(updated, amortPm1, amortPm2);
       onAmortizationUpdated(amort, updated);
-    } else if (mode === 'AMORT') {
+    } else if (mode === 'SMPL') {
+      const fld = key.replace('smpl_', '') as keyof SMPLParams;
+      setSmplParams((p) => ({ ...p, [fld]: val }));
+    } else if (mode === 'AMRT' || mode === 'AMORT') {
       if (key === 'pm1') setAmortPm1(Math.max(1, Math.round(val)));
       if (key === 'pm2') setAmortPm2(Math.max(1, Math.round(val)));
       const amort = calculateAmortizationSummary(tvmParams, amortPm1, amortPm2);
@@ -575,6 +651,10 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       else if (key === 'bond_yld') setBondParams((p) => ({ ...p, yld: val }));
       else if (key === 'bond_prc') setBondParams((p) => ({ ...p, prc: val }));
       else if (key === 'bond_rdv') setBondParams((p) => ({ ...p, rdv: val }));
+    } else if (mode === 'STAT') {
+      if (key === 'stat_add') {
+        setStatData((p) => [...p, val]);
+      }
     }
   };
 
@@ -587,7 +667,30 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     }
 
     try {
-      if (mode === 'CMPD') {
+      if (mode === 'SMPL') {
+        const key = currentItem.key;
+        if (key === 'smpl_si') {
+          const si = solveSMPLInterest(smplParams);
+          setSmplParams((p) => ({ ...p, si }));
+          setStatusMessage('SOLVED SI');
+        } else if (key === 'smpl_sfv') {
+          const sfv = solveSMPLFutureValue(smplParams);
+          setSmplParams((p) => ({ ...p, sfv }));
+          setStatusMessage('SOLVED SFV');
+        } else if (key === 'smpl_pv') {
+          const pv = solveSMPLPrincipal(smplParams.dys, smplParams.i, smplParams.si || 5000, smplParams.set);
+          setSmplParams((p) => ({ ...p, pv }));
+          setStatusMessage('SOLVED PV');
+        } else if (key === 'smpl_i') {
+          const i = solveSMPLRate(smplParams.dys, smplParams.pv, smplParams.si || 5000, smplParams.set);
+          setSmplParams((p) => ({ ...p, i }));
+          setStatusMessage('SOLVED I%');
+        } else if (key === 'smpl_dys') {
+          const dys = solveSMPLDays(smplParams.pv, smplParams.i, smplParams.si || 5000, smplParams.set);
+          setSmplParams((p) => ({ ...p, dys }));
+          setStatusMessage('SOLVED Dys');
+        }
+      } else if (mode === 'CMPD') {
         const key = currentItem.key;
         let updatedParams = { ...tvmParams };
 
@@ -630,18 +733,21 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
         const amort = calculateAmortizationSummary(updatedParams, amortPm1, amortPm2);
         onAmortizationUpdated(amort, updatedParams);
-      } else if (mode === 'AMORT') {
+      } else if (mode === 'AMRT' || mode === 'AMORT') {
         const amort = calculateAmortizationSummary(tvmParams, amortPm1, amortPm2);
         onAmortizationUpdated(amort, tvmParams);
         const sol = generateAmortSolution(amort, tvmParams);
         onSolutionGenerated(sol);
-        setStatusMessage(`AMORT ${currentItem.key.toUpperCase()}`);
+        setStatusMessage(`AMRT ${currentItem.key.toUpperCase()}`);
       } else if (mode === 'CASH') {
         const res = solveCashFlow(cfParams);
         onCashFlowUpdated(cfParams, res);
         const sol = generateCashFlowSolution(cfParams, res);
         onSolutionGenerated(sol);
         setStatusMessage(`CASH ${currentItem.key.toUpperCase()}`);
+      } else if (mode === 'STAT') {
+        const stats = calculate1VarStats(statData);
+        setStatusMessage(`STAT x̄: ${stats.mean.toFixed(2)}`);
       } else if (mode === 'CNVR') {
         if (currentItem.key === 'eff') {
           const eff = aprToEff(cnvrParams.apr, cnvrParams.n);
@@ -767,28 +873,40 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   return (
     <div className="flex flex-col items-center">
-      {/* Outer Calculator Matte Black Chassis */}
-      <div className="relative w-full max-w-[410px] sm:max-w-[435px] rounded-3xl bg-[#16171a] p-3.5 sm:p-5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_2px_rgba(255,255,255,0.12)] border border-[#23252a] select-none">
+      {/* Outer Calculator Matte Black Chassis with subtle side curvature matching 2nd edition */}
+      <div className="relative w-full max-w-[400px] sm:max-w-[425px] rounded-[32px] bg-[#17181c] p-3.5 sm:p-5 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.06),inset_0_1px_2px_rgba(255,255,255,0.12)] border border-[#26282e] select-none">
         
-        {/* Brand & Model Name Header */}
-        <div className="flex items-center justify-between pb-2.5 pt-1 border-b border-zinc-800/80 mb-3 px-1">
-          <div className="flex items-baseline gap-2">
-            <span className="font-sans font-black tracking-widest text-lg sm:text-xl text-white">
+        {/* Authentic Top Header matching photo: CASIO FC-200V FINANCIAL CONSULTANT | SOLAR PANEL | 2nd edition */}
+        <div className="flex items-center justify-between pb-2 pt-0.5 border-b border-zinc-800/80 mb-3 px-1">
+          {/* Left: CASIO & FC-200V / FINANCIAL CONSULTANT */}
+          <div className="flex flex-col">
+            <span className="font-sans font-black tracking-widest text-lg sm:text-xl text-white leading-none">
               CASIO
             </span>
-            <span className="text-[10px] sm:text-xs text-zinc-400 font-medium tracking-wide">
-              FC-200V
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] uppercase tracking-wider text-amber-500/90 font-bold">
-                Financial Consultant
-              </span>
-              <span className="text-[8px] text-zinc-400 tracking-tight">
-                TWO WAY POWER
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-[11px] font-bold text-zinc-300 tracking-wider">
+                FC-200V
               </span>
             </div>
+            <span className="text-[7.5px] uppercase tracking-wider text-zinc-400 font-semibold leading-tight">
+              FINANCIAL CONSULTANT
+            </span>
+          </div>
+
+          {/* Center: Glossy Solar Cell with photovoltaic lines */}
+          <div className="w-16 h-7 rounded bg-[#0d0f13] border border-zinc-700/60 p-0.5 shadow-inner flex flex-col justify-between overflow-hidden">
+            <div className="h-full w-full bg-gradient-to-r from-[#1a1212] via-[#2a1b1b] to-[#1a1212] flex justify-evenly items-center">
+              <div className="w-px h-full bg-zinc-700/50" />
+              <div className="w-px h-full bg-zinc-700/50" />
+              <div className="w-px h-full bg-zinc-700/50" />
+            </div>
+          </div>
+
+          {/* Right: 2nd edition & Sound toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] sm:text-[11px] text-zinc-300 font-medium tracking-tight">
+              2nd edition
+            </span>
             <button
               type="button"
               onClick={() => setSoundOn(toggleSound())}
@@ -801,7 +919,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
         </div>
 
         {/* Dual-Line LCD Screen */}
-        <div className="mb-3.5">
+        <div className="mb-3">
           <LCDScreen
             mode={mode}
             paramName={currentItem.label}
@@ -819,110 +937,56 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
           />
         </div>
 
-        {/* 1. FINANCIAL MODES (10 KEYS: 2 ROWS × 5) */}
-        <div className="mb-2.5">
-          <div className="grid grid-cols-5 gap-1 sm:gap-1.5 mb-1.5">
-            {[
-              { id: 'SMPL', label: 'SMPL', shift: 'SET', desc: 'ריבית פשוטה' },
-              { id: 'CMPD', label: 'CMPD', shift: 'B/E', desc: 'ריבית דריבית / TVM' },
-              { id: 'CASH', label: 'CASH', shift: 'CF', desc: 'תזרים מזומנים' },
-              { id: 'AMORT', label: 'AMORT', shift: 'PRN', desc: 'לוח סילוקין' },
-              { id: 'CNVR', label: 'CNVR', shift: 'EFF', desc: 'המרת ריבית' },
-            ].map((m) => (
-              <div key={m.id} className="flex flex-col items-center">
-                <span className="text-[8px] text-amber-400 font-bold tracking-tighter scale-90 mb-0.5">
-                  {m.shift}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleSelectMode(m.id as CalculatorMode)}
-                  className={`w-full py-1.5 rounded text-[11px] font-bold transition-all shadow-sm ${
-                    mode === m.id
-                      ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-md ring-1 ring-blue-400'
-                      : 'bg-[#25282f] text-zinc-200 hover:bg-[#2e323b] active:translate-y-0.5'
-                  }`}
-                  title={m.desc}
-                >
-                  {m.label}
-                </button>
-              </div>
-            ))}
+        {/* ============================================================== */}
+        {/* 1. TOP CONTROL BLOCK (SHIFT, ALPHA, REPLAY D-PAD, SETUP, ON) */}
+        {/* ============================================================== */}
+        <div className="grid grid-cols-3 items-center gap-1.5 mb-1 px-1">
+          {/* Left: SHIFT & ALPHA oval pill buttons in recessed oval housing */}
+          <div className="flex items-center gap-1.5 justify-center bg-[#131418] p-1.5 rounded-2xl border border-zinc-800/90 shadow-inner">
+            {/* SHIFT */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-bold text-[#d4b045] uppercase tracking-tighter mb-0.5">
+                SHIFT
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  playKeyClick('func');
+                  setIsShift(!isShift);
+                  setIsAlpha(false);
+                }}
+                className={`w-7 h-5 sm:w-8 sm:h-5.5 rounded-full shadow transition-all active:scale-95 ${
+                  isShift
+                    ? 'bg-[#d4b045] text-black ring-1 ring-amber-300'
+                    : 'bg-[#2a2c33] hover:bg-[#343740] border border-zinc-700/60'
+                }`}
+                title="SHIFT function"
+              />
+            </div>
+
+            {/* ALPHA */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-bold text-[#d45454] uppercase tracking-tighter mb-0.5">
+                ALPHA
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  playKeyClick('func');
+                  setIsAlpha(!isAlpha);
+                  setIsShift(false);
+                }}
+                className={`w-7 h-5 sm:w-8 sm:h-5.5 rounded-full shadow transition-all active:scale-95 ${
+                  isAlpha
+                    ? 'bg-[#d45454] text-white ring-1 ring-red-300'
+                    : 'bg-[#2a2c33] hover:bg-[#343740] border border-zinc-700/60'
+                }`}
+                title="ALPHA variable"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
-            {[
-              { id: 'COST', label: 'COST', shift: 'MAR', desc: 'עלות, מכירה, רווח' },
-              { id: 'DAYS', label: 'DAYS', shift: '360', desc: 'חישוב ימים ותאריכים' },
-              { id: 'DEPR', label: 'DEPR', shift: 'SL', desc: 'חישובי פחת' },
-              { id: 'BOND', label: 'BOND', shift: 'CPN', desc: 'אגרות חוב' },
-              { id: 'BEVN', label: 'BEVN', shift: 'BEP', desc: 'נקודת איזון' },
-            ].map((m) => (
-              <div key={m.id} className="flex flex-col items-center">
-                <span className="text-[8px] text-amber-400 font-bold tracking-tighter scale-90 mb-0.5">
-                  {m.shift}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleSelectMode(m.id as CalculatorMode)}
-                  className={`w-full py-1.5 rounded text-[11px] font-bold transition-all shadow-sm ${
-                    mode === m.id
-                      ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-md ring-1 ring-blue-400'
-                      : 'bg-[#25282f] text-zinc-200 hover:bg-[#2e323b] active:translate-y-0.5'
-                  }`}
-                  title={m.desc}
-                >
-                  {m.label}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 2. NAVIGATION & CONTROL BLOCK (WITH BLUE-GRAY DPAD) */}
-        <div className="grid grid-cols-3 items-center gap-1.5 mb-2.5 px-0.5">
-          {/* Left: SHIFT, ALPHA, MODE */}
-          <div className="flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                playKeyClick('func');
-                setIsShift(!isShift);
-              }}
-              className={`py-1.5 rounded text-xs font-black shadow transition-all ${
-                isShift
-                  ? 'bg-amber-500 text-black ring-1 ring-amber-300'
-                  : 'bg-[#25282f] text-amber-400 hover:bg-[#2c3038]'
-              }`}
-            >
-              SHIFT
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playKeyClick('func');
-                setIsAlpha(!isAlpha);
-              }}
-              className={`py-1.5 rounded text-xs font-black shadow transition-all ${
-                isAlpha
-                  ? 'bg-red-500 text-white ring-1 ring-red-300'
-                  : 'bg-[#25282f] text-red-400 hover:bg-[#2c3038]'
-              }`}
-            >
-              ALPHA
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectMode('COMP')}
-              className={`py-1 rounded text-[10px] font-bold shadow ${
-                mode === 'COMP' ? 'bg-zinc-200 text-zinc-900' : 'bg-[#202227] text-zinc-400 hover:text-white'
-              }`}
-              title="מצב מחשבון מדעי כללי"
-            >
-              COMP / CALC
-            </button>
-          </div>
-
-          {/* Center: Authentic Blue-Gray REPLAY D-Pad */}
+          {/* Center: Authentic Matte Black Replay D-Pad with concentric rings */}
           <div className="flex justify-center">
             <DpadNavigation
               onUp={handleUp}
@@ -932,8 +996,97 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
             />
           </div>
 
-          {/* Right: ESC, SETUP, SOLVE */}
-          <div className="flex flex-col gap-1.5">
+          {/* Right: SETUP & ON oval pill buttons in recessed oval housing */}
+          <div className="flex items-center gap-1.5 justify-center bg-[#131418] p-1.5 rounded-2xl border border-zinc-800/90 shadow-inner">
+            {/* SETUP */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-bold text-zinc-300 uppercase tracking-tighter mb-0.5">
+                SETUP
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  playKeyClick('func');
+                  // Toggle Deg/Rad
+                  const nextUnit = angleUnit === 'DEG' ? 'RAD' : 'DEG';
+                  setAngleUnit(nextUnit);
+                  setStatusMessage(`SETUP: ${nextUnit}`);
+                }}
+                className="w-7 h-5 sm:w-8 sm:h-5.5 rounded-full bg-[#2a2c33] hover:bg-[#343740] border border-zinc-700/60 shadow active:scale-95"
+                title="הגדרות מחשבון"
+              />
+            </div>
+
+            {/* ON */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-bold text-zinc-300 uppercase tracking-tighter mb-0.5">
+                ON
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  playKeyClick('func');
+                  handleClear();
+                  setStatusMessage('CASIO FC-200V ON');
+                }}
+                className="w-7 h-5 sm:w-8 sm:h-5.5 rounded-full bg-[#2a2c33] hover:bg-[#343740] border border-zinc-700/60 shadow active:scale-95"
+                title="הפעלת מחשבון"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================== */}
+        {/* 2. SUB-NAV ROW (SHORT CUT 1, SHORT CUT 2, ESC, SOLVE)          */}
+        {/* ============================================================== */}
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-2 px-1">
+          {/* SHORT CUT 1 / FMEM 1 */}
+          <div className="flex flex-col items-center">
+            <span className="text-[8px] text-[#d4b045] font-bold tracking-tight">FMEM 1</span>
+            <button
+              type="button"
+              onClick={() => {
+                playKeyClick('func');
+                if (isShift) {
+                  setShortCut1(mode);
+                  setIsShift(false);
+                  setStatusMessage(`SAVED ${mode} TO FMEM 1`);
+                } else {
+                  handleSelectMode(shortCut1);
+                  setStatusMessage(`SHORT CUT 1: ${shortCut1}`);
+                }
+              }}
+              className="w-full py-1.5 rounded-lg bg-[#22242b] hover:bg-[#2b2e38] text-[#7da7d9] text-[9.5px] sm:text-[10px] font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
+            >
+              SHORT CUT 1
+            </button>
+          </div>
+
+          {/* SHORT CUT 2 / FMEM 2 */}
+          <div className="flex flex-col items-center">
+            <span className="text-[8px] text-[#d4b045] font-bold tracking-tight">FMEM 2</span>
+            <button
+              type="button"
+              onClick={() => {
+                playKeyClick('func');
+                if (isShift) {
+                  setShortCut2(mode);
+                  setIsShift(false);
+                  setStatusMessage(`SAVED ${mode} TO FMEM 2`);
+                } else {
+                  handleSelectMode(shortCut2);
+                  setStatusMessage(`SHORT CUT 2: ${shortCut2}`);
+                }
+              }}
+              className="w-full py-1.5 rounded-lg bg-[#22242b] hover:bg-[#2b2e38] text-[#7da7d9] text-[9.5px] sm:text-[10px] font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
+            >
+              SHORT CUT 2
+            </button>
+          </div>
+
+          {/* ESC */}
+          <div className="flex flex-col items-center">
+            <span className="h-3" />
             <button
               type="button"
               onClick={() => {
@@ -942,274 +1095,546 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
                 setEditValue('');
                 setStatusMessage('');
               }}
-              className="py-1.5 rounded text-xs font-bold bg-[#25282f] text-zinc-300 hover:bg-[#2c3038] shadow active:translate-y-0.5"
+              className="w-full py-1.5 rounded-lg bg-[#22242b] hover:bg-[#2b2e38] text-[#7da7d9] text-[11px] font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
             >
               ESC
             </button>
+          </div>
 
-            {/* High-visibility SOLVE button */}
+          {/* SOLVE (Authentic light-blue button with dark blue font) */}
+          <div className="flex flex-col items-center">
+            <span className="h-3" />
             <button
               type="button"
               onClick={handleSolve}
-              className="py-2.5 rounded-lg text-xs sm:text-sm font-black bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-700 hover:from-blue-600 hover:to-indigo-500 text-white shadow-[0_4px_12px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] active:translate-y-0.5 transition-all ring-1 ring-blue-400/50 flex flex-col items-center justify-center"
-              title="בצע חישוב עבור הפרמטר הנוכחי"
+              className="w-full py-1.5 rounded-lg bg-[#6ea4d8] hover:bg-[#80b4e6] text-[#0d2a4a] text-[12px] font-black tracking-wider border border-[#528fc7] shadow-[0_2px_8px_rgba(110,164,216,0.4)] active:translate-y-0.5"
+              title="חשב פתרון עבור הפרמטר הנוכחי (SOLVE)"
             >
-              <span>SOLVE</span>
-              <span className="text-[7.5px] font-normal opacity-80">חשב תוצאה</span>
+              SOLVE
             </button>
           </div>
         </div>
 
-        {/* 3. SCIENTIFIC KEYS (3 ROWS × 6 = 18 KEYS) */}
-        <div className="space-y-1 mb-2">
-          {/* Scientific Row 1: x⁻¹, √, x², ^, log, ln */}
+        {/* ============================================================== */}
+        {/* 3. FINANCIAL KEYS (2 ROWS × 6 KEYS = 12 KEYS TOTAL)            */}
+        {/* ============================================================== */}
+        <div className="space-y-1 mb-2 px-0.5">
+          {/* Financial Row 1: SMPL, CMPD, CASH, AMRT, COMP, STAT (S-MENU) */}
           <div className="grid grid-cols-6 gap-1">
             {[
-              { label: 'x⁻¹', shift: 'x!', val: '^-1', sVal: '!' },
-              { label: '√', shift: '³√', val: 'sqrt(', sVal: 'cbrt(' },
-              { label: 'x²', shift: 'x³', val: '^2', sVal: '^3' },
-              { label: '^', shift: 'ˣ√', val: '^', sVal: '^(1/' },
-              { label: 'log', shift: '10ˣ', val: 'log(', sVal: '10^' },
-              { label: 'ln', shift: 'eˣ', val: 'ln(', sVal: 'e^' },
-            ].map((k, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <span className="text-[8px] text-amber-400 font-bold scale-90 h-3 leading-3">
-                  {k.shift}
+              { id: 'SMPL', label: 'SMPL' },
+              { id: 'CMPD', label: 'CMPD' },
+              { id: 'CASH', label: 'CASH' },
+              { id: 'AMRT', label: 'AMRT' },
+              { id: 'COMP', label: 'COMP' },
+              { id: 'STAT', label: 'STAT', shift: 'S-MENU' },
+            ].map((m) => (
+              <div key={m.id} className="flex flex-col items-center">
+                <span className="text-[7.5px] text-[#d4b045] font-bold h-3 leading-3">
+                  {m.shift || ''}
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleScientific(k.val, k.sVal)}
-                  className="w-full py-1 rounded bg-[#202227] hover:bg-[#2a2c33] text-zinc-200 text-xs font-semibold shadow-sm active:translate-y-0.5 font-mono"
+                  onClick={() => handleSelectMode(m.id as CalculatorMode)}
+                  className={`w-full py-1.5 rounded text-[10.5px] font-bold tracking-tight shadow-sm transition-all ${
+                    mode === m.id
+                      ? 'bg-blue-600 text-white ring-1 ring-blue-300'
+                      : 'bg-[#22242b] text-zinc-100 hover:bg-[#2c2f38] border border-zinc-700/60 active:translate-y-0.5'
+                  }`}
                 >
-                  {k.label}
+                  {m.label}
                 </button>
               </div>
             ))}
           </div>
 
-          {/* Scientific Row 2: (-), °'", hyp, sin, cos, tan with Alpha labels A, B, C, D, X, Y */}
+          {/* Financial Row 2: CNVR (A), COST (B), DAYS (C), DEPR (D), BOND, BEVN */}
           <div className="grid grid-cols-6 gap-1">
             {[
-              { label: '(-)', shift: 'a b/c', alpha: 'A', val: '(-)', sVal: '/', aVal: 'A' },
-              { label: '° \' "', shift: '←', alpha: 'B', val: '°', sVal: '', aVal: 'B' },
-              { label: 'hyp', shift: 'sin⁻¹', alpha: 'C', val: 'sinh(', sVal: 'asin(', aVal: 'C' },
-              { label: 'sin', shift: 'cos⁻¹', alpha: 'D', val: 'sin(', sVal: 'acos(', aVal: 'D' },
-              { label: 'cos', shift: 'tan⁻¹', alpha: 'X', val: 'cos(', sVal: 'atan(', aVal: 'X' },
-              { label: 'tan', shift: 'd/c', alpha: 'Y', val: 'tan(', sVal: '/', aVal: 'Y' },
-            ].map((k, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <div className="flex items-center justify-between w-full px-0.5 h-3">
-                  <span className="text-[7.5px] text-amber-400 font-bold scale-90">{k.shift}</span>
-                  <span className="text-[7.5px] text-red-400 font-bold scale-90">{k.alpha}</span>
-                </div>
+              { id: 'CNVR', label: 'CNVR', alpha: 'A' },
+              { id: 'COST', label: 'COST', alpha: 'B' },
+              { id: 'DAYS', label: 'DAYS', alpha: 'C' },
+              { id: 'DEPR', label: 'DEPR', alpha: 'D' },
+              { id: 'BOND', label: 'BOND' },
+              { id: 'BEVN', label: 'BEVN' },
+            ].map((m) => (
+              <div key={m.id} className="flex flex-col items-center">
+                <span className="text-[7.5px] text-[#d45454] font-bold h-3 leading-3">
+                  {m.alpha || ''}
+                </span>
                 <button
                   type="button"
-                  onClick={() => handleScientific(k.val, k.sVal, k.aVal)}
-                  className="w-full py-1 rounded bg-[#202227] hover:bg-[#2a2c33] text-zinc-200 text-xs font-semibold shadow-sm active:translate-y-0.5 font-mono"
+                  onClick={() => {
+                    if (isAlpha && m.alpha) {
+                      handleInputChar(m.alpha);
+                      setIsAlpha(false);
+                    } else {
+                      handleSelectMode(m.id as CalculatorMode);
+                    }
+                  }}
+                  className={`w-full py-1.5 rounded text-[10.5px] font-bold tracking-tight shadow-sm transition-all ${
+                    mode === m.id
+                      ? 'bg-blue-600 text-white ring-1 ring-blue-300'
+                      : 'bg-[#22242b] text-zinc-100 hover:bg-[#2c2f38] border border-zinc-700/60 active:translate-y-0.5'
+                  }`}
                 >
-                  {k.label}
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Scientific Row 3: RCL/STO, ENG, (, ), ,, M+/M- with Alpha M */}
-          <div className="grid grid-cols-6 gap-1">
-            {[
-              { label: 'RCL', shift: 'STO', alpha: '', val: 'RCL', sVal: 'STO', aVal: '' },
-              { label: 'ENG', shift: 'D/R', alpha: '', val: 'ENG', sVal: 'DEG/RAD', aVal: '' },
-              { label: '(', shift: '%', alpha: '', val: '(', sVal: '%', aVal: '' },
-              { label: ')', shift: ',', alpha: '', val: ')', sVal: ',', aVal: '' },
-              { label: ',', shift: ';', alpha: '', val: ',', sVal: ';', aVal: '' },
-              { label: 'M+', shift: 'M-', alpha: 'M', val: 'M', sVal: '-M', aVal: 'M' },
-            ].map((k, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <div className="flex items-center justify-between w-full px-0.5 h-3">
-                  <span className="text-[7.5px] text-amber-400 font-bold scale-90">{k.shift}</span>
-                  {k.alpha && <span className="text-[7.5px] text-red-400 font-bold scale-90">{k.alpha}</span>}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleScientific(k.val, k.sVal, k.aVal)}
-                  className="w-full py-1 rounded bg-[#202227] hover:bg-[#2a2c33] text-zinc-200 text-xs font-semibold shadow-sm active:translate-y-0.5 font-mono"
-                >
-                  {k.label}
+                  {m.label}
                 </button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 4. MAIN NUMERIC KEYPAD (4 ROWS × 5 KEYS = 20 KEYS) */}
-        <div className="space-y-1">
-          {/* Numeric Row 1: 7, 8, 9, DEL (INS), AC (OFF) */}
+        {/* ============================================================== */}
+        {/* 4. EDIT & MEMORY ROW (6 KEYS)                                   */}
+        {/*    (-), RCL (STO), ( (%), ) (,, X), CTLG (VARS, Y), M+ (M-, M)  */}
+        {/* ============================================================== */}
+        <div className="grid grid-cols-6 gap-1 mb-2.5 px-0.5">
+          {/* (-) */}
+          <div className="flex flex-col items-center">
+            <span className="h-3" />
+            <button
+              type="button"
+              onClick={() => handleInputChar('-')}
+              className="w-full py-1.5 rounded bg-[#202227] hover:bg-[#282a31] text-zinc-200 text-xs font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
+            >
+              (-)
+            </button>
+          </div>
+
+          {/* RCL (STO) */}
+          <div className="flex flex-col items-center">
+            <span className="text-[7.5px] text-[#d4b045] font-bold h-3 leading-3">STO</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (isShift) {
+                  setIsStoreMode(true);
+                  setIsShift(false);
+                  setStatusMessage('STO: PRESS A-D, X, Y, M');
+                } else {
+                  setIsRecallMode(true);
+                  setStatusMessage('RCL: PRESS A-D, X, Y, M');
+                }
+              }}
+              className="w-full py-1.5 rounded bg-[#202227] hover:bg-[#282a31] text-zinc-200 text-[10.5px] font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
+            >
+              RCL
+            </button>
+          </div>
+
+          {/* ( (%) */}
+          <div className="flex flex-col items-center">
+            <span className="text-[7.5px] text-[#d4b045] font-bold h-3 leading-3">%</span>
+            <button
+              type="button"
+              onClick={() => handleInputChar('(')}
+              className="w-full py-1.5 rounded bg-[#202227] hover:bg-[#282a31] text-zinc-200 text-xs font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
+            >
+              (
+            </button>
+          </div>
+
+          {/* ) (,, X) */}
+          <div className="flex flex-col items-center">
+            <div className="flex items-center justify-between w-full px-1 h-3 leading-3">
+              <span className="text-[7.5px] text-[#d4b045] font-bold">,</span>
+              <span className="text-[7.5px] text-[#d45454] font-bold">X</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (isAlpha) {
+                  handleInputChar('X');
+                  setIsAlpha(false);
+                } else {
+                  handleInputChar(')');
+                }
+              }}
+              className="w-full py-1.5 rounded bg-[#202227] hover:bg-[#282a31] text-zinc-200 text-xs font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
+            >
+              )
+            </button>
+          </div>
+
+          {/* CTLG (VARS, Y) */}
+          <div className="flex flex-col items-center">
+            <div className="flex items-center justify-between w-full px-1 h-3 leading-3">
+              <span className="text-[7.5px] text-[#d4b045] font-bold">VARS</span>
+              <span className="text-[7.5px] text-[#d45454] font-bold">Y</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (isAlpha) {
+                  handleInputChar('Y');
+                  setIsAlpha(false);
+                } else {
+                  playKeyClick('func');
+                  setStatusMessage(`MEM: A=${memory.A} B=${memory.B} C=${memory.C} M=${memory.M}`);
+                }
+              }}
+              className="w-full py-1.5 rounded bg-[#202227] hover:bg-[#282a31] text-zinc-200 text-[10px] font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
+            >
+              CTLG
+            </button>
+          </div>
+
+          {/* M+ (M-, M) */}
+          <div className="flex flex-col items-center">
+            <div className="flex items-center justify-between w-full px-1 h-3 leading-3">
+              <span className="text-[7.5px] text-[#d4b045] font-bold">M-</span>
+              <span className="text-[7.5px] text-[#d45454] font-bold">M</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (isAlpha) {
+                  handleInputChar('M');
+                  setIsAlpha(false);
+                } else if (isShift) {
+                  handleScientific('', 'M-');
+                } else {
+                  handleScientific('M+');
+                }
+              }}
+              className="w-full py-1.5 rounded bg-[#202227] hover:bg-[#282a31] text-zinc-200 text-xs font-bold border border-zinc-700/50 shadow active:translate-y-0.5"
+            >
+              M+
+            </button>
+          </div>
+        </div>
+
+        {/* ============================================================== */}
+        {/* 5. 4×5 NUMERIC & SCIENTIFIC BLOCK (20 KEYS)                    */}
+        {/* ============================================================== */}
+        <div className="space-y-1.5 px-0.5">
+          {/* Row 1: 7 (eˣ), 8 (ln), 9 (CLR), DEL (INS - Slate Blue), AC (OFF - Slate Blue) */}
           <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-            {['7', '8', '9'].map((num) => (
-              <div key={num} className="flex flex-col items-center">
-                <span className="h-2.5" />
-                <button
-                  type="button"
-                  onClick={() => handleInputChar(num)}
-                  className="w-full py-2.5 sm:py-3 rounded-lg bg-[#383d47] hover:bg-[#424854] text-white font-bold text-base sm:text-lg shadow-[0_3px_0_#1e2127] active:translate-y-0.5"
-                >
-                  {num}
-                </button>
-              </div>
-            ))}
+            {/* 7 */}
             <div className="flex flex-col items-center">
-              <span className="text-[8px] text-amber-400 font-bold h-2.5">INS</span>
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">eˣ</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'e^(');
+                  } else {
+                    handleInputChar('7');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                7
+              </button>
+            </div>
+
+            {/* 8 */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">ln</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'ln(');
+                  } else {
+                    handleInputChar('8');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                8
+              </button>
+            </div>
+
+            {/* 9 */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">CLR</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'CLR');
+                  } else {
+                    handleInputChar('9');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                9
+              </button>
+            </div>
+
+            {/* DEL (INS) - Authentic Slate Blue/Gray keycap matching photo */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">INS</span>
               <button
                 type="button"
                 onClick={handleDelete}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#842020] hover:bg-[#992626] text-white font-bold text-sm shadow-[0_3px_0_#4d1313] active:translate-y-0.5"
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#53657d] hover:bg-[#5f738e] text-white font-bold text-xs sm:text-sm border border-[#3e4c5e] shadow-[0_3px_0_#2b3441] active:translate-y-0.5"
               >
                 DEL
               </button>
             </div>
+
+            {/* AC (OFF) - Authentic Slate Blue/Gray keycap matching photo */}
             <div className="flex flex-col items-center">
-              <span className="text-[8px] text-amber-400 font-bold h-2.5">OFF</span>
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">OFF</span>
               <button
                 type="button"
                 onClick={handleClear}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#a62b2b] hover:bg-[#bf3232] text-white font-bold text-sm shadow-[0_3px_0_#5e1818] active:translate-y-0.5"
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#53657d] hover:bg-[#5f738e] text-white font-bold text-xs sm:text-sm border border-[#3e4c5e] shadow-[0_3px_0_#2b3441] active:translate-y-0.5"
               >
                 AC
               </button>
             </div>
           </div>
 
-          {/* Numeric Row 2: 4, 5, 6, × (nPr), ÷ (nCr) */}
+          {/* Row 2: 4 (x²), 5 (√), 6 (^), ×, ÷ */}
           <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-            {['4', '5', '6'].map((num) => (
-              <div key={num} className="flex flex-col items-center">
-                <span className="h-2.5" />
-                <button
-                  type="button"
-                  onClick={() => handleInputChar(num)}
-                  className="w-full py-2.5 sm:py-3 rounded-lg bg-[#383d47] hover:bg-[#424854] text-white font-bold text-base sm:text-lg shadow-[0_3px_0_#1e2127] active:translate-y-0.5"
-                >
-                  {num}
-                </button>
-              </div>
-            ))}
+            {/* 4 */}
             <div className="flex flex-col items-center">
-              <span className="text-[8px] text-amber-400 font-bold h-2.5">nPr</span>
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">x²</span>
               <button
                 type="button"
-                onClick={() => handleScientific('×', 'nPr')}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#2a2d34] hover:bg-[#343842] text-zinc-100 font-bold text-base shadow-[0_3px_0_#17191d] active:translate-y-0.5"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', '^2');
+                  } else {
+                    handleInputChar('4');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                4
+              </button>
+            </div>
+
+            {/* 5 */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">√</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'sqrt(');
+                  } else {
+                    handleInputChar('5');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                5
+              </button>
+            </div>
+
+            {/* 6 */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">^</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', '^');
+                  } else {
+                    handleInputChar('6');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                6
+              </button>
+            </div>
+
+            {/* × */}
+            <div className="flex flex-col items-center">
+              <span className="h-3" />
+              <button
+                type="button"
+                onClick={() => handleInputChar('×')}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#252830] hover:bg-[#2f333d] text-zinc-100 font-bold text-base sm:text-lg border border-zinc-700/50 shadow-[0_3px_0_#17191e] active:translate-y-0.5"
               >
                 ×
               </button>
             </div>
+
+            {/* ÷ */}
             <div className="flex flex-col items-center">
-              <span className="text-[8px] text-amber-400 font-bold h-2.5">nCr</span>
+              <span className="h-3" />
               <button
                 type="button"
-                onClick={() => handleScientific('÷', 'nCr')}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#2a2d34] hover:bg-[#343842] text-zinc-100 font-bold text-base shadow-[0_3px_0_#17191d] active:translate-y-0.5"
+                onClick={() => handleInputChar('÷')}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#252830] hover:bg-[#2f333d] text-zinc-100 font-bold text-base sm:text-lg border border-zinc-700/50 shadow-[0_3px_0_#17191e] active:translate-y-0.5"
               >
                 ÷
               </button>
             </div>
           </div>
 
-          {/* Numeric Row 3: 1, 2, 3, + (Pol), - (Rec) */}
+          {/* Row 3: 1 (sin), 2 (cos), 3 (tan), +, - */}
           <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-            {['1', '2', '3'].map((num) => (
-              <div key={num} className="flex flex-col items-center">
-                <span className="h-2.5" />
-                <button
-                  type="button"
-                  onClick={() => handleInputChar(num)}
-                  className="w-full py-2.5 sm:py-3 rounded-lg bg-[#383d47] hover:bg-[#424854] text-white font-bold text-base sm:text-lg shadow-[0_3px_0_#1e2127] active:translate-y-0.5"
-                >
-                  {num}
-                </button>
-              </div>
-            ))}
+            {/* 1 */}
             <div className="flex flex-col items-center">
-              <span className="text-[8px] text-amber-400 font-bold h-2.5">Pol</span>
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">sin</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'sin(');
+                  } else {
+                    handleInputChar('1');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                1
+              </button>
+            </div>
+
+            {/* 2 */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">cos</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'cos(');
+                  } else {
+                    handleInputChar('2');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                2
+              </button>
+            </div>
+
+            {/* 3 */}
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">tan</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'tan(');
+                  } else {
+                    handleInputChar('3');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
+              >
+                3
+              </button>
+            </div>
+
+            {/* + */}
+            <div className="flex flex-col items-center">
+              <span className="h-3" />
               <button
                 type="button"
                 onClick={() => handleInputChar('+')}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#2a2d34] hover:bg-[#343842] text-zinc-100 font-bold text-base shadow-[0_3px_0_#17191d] active:translate-y-0.5"
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#252830] hover:bg-[#2f333d] text-zinc-100 font-bold text-base sm:text-lg border border-zinc-700/50 shadow-[0_3px_0_#17191e] active:translate-y-0.5"
               >
                 +
               </button>
             </div>
+
+            {/* - */}
             <div className="flex flex-col items-center">
-              <span className="text-[8px] text-amber-400 font-bold h-2.5">Rec</span>
+              <span className="h-3" />
               <button
                 type="button"
                 onClick={() => handleInputChar('-')}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#2a2d34] hover:bg-[#343842] text-zinc-100 font-bold text-base shadow-[0_3px_0_#17191d] active:translate-y-0.5"
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#252830] hover:bg-[#2f333d] text-zinc-100 font-bold text-base sm:text-lg border border-zinc-700/50 shadow-[0_3px_0_#17191e] active:translate-y-0.5"
               >
                 -
               </button>
             </div>
           </div>
 
-          {/* Numeric Row 4: 0, ., EXP (π/e), Ans (Ran#), EXE */}
+          {/* Row 4: 0 (Rnd), . (Δ%), ×10ˣ (π, e), Ans (DRG▶), EXE */}
           <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+            {/* 0 */}
             <div className="flex flex-col items-center">
-              <span className="h-2.5" />
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">Rnd</span>
               <button
                 type="button"
                 onClick={() => handleInputChar('0')}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#383d47] hover:bg-[#424854] text-white font-bold text-base sm:text-lg shadow-[0_3px_0_#1e2127] active:translate-y-0.5"
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
               >
                 0
               </button>
             </div>
+
+            {/* . (Δ%) */}
             <div className="flex flex-col items-center">
-              <span className="text-[8px] text-amber-400 font-bold h-2.5">Ran#</span>
+              <span className="text-[8px] text-[#d4b045] font-bold h-3 leading-3">Δ%</span>
               <button
                 type="button"
-                onClick={() => handleScientific('.', `${Math.random().toFixed(3)}`)}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#383d47] hover:bg-[#424854] text-white font-bold text-base sm:text-lg shadow-[0_3px_0_#1e2127] active:translate-y-0.5"
+                onClick={() => handleInputChar('.')}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-base sm:text-lg border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
               >
                 .
               </button>
             </div>
+
+            {/* ×10ˣ (π, e) */}
             <div className="flex flex-col items-center">
-              <div className="flex items-center justify-between w-full px-0.5 h-2.5">
-                <span className="text-[7.5px] text-amber-400 font-bold">π</span>
-                <span className="text-[7.5px] text-red-400 font-bold">e</span>
+              <div className="flex items-center justify-between w-full px-1 h-3 leading-3">
+                <span className="text-[7.5px] text-[#d4b045] font-bold">π</span>
+                <span className="text-[7.5px] text-[#d45454] font-bold">e</span>
               </div>
               <button
                 type="button"
-                onClick={() => handleScientific('EXP', 'π', 'e')}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#2a2d34] hover:bg-[#343842] text-zinc-200 font-bold text-xs sm:text-sm shadow-[0_3px_0_#17191d] active:translate-y-0.5 font-mono"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'π');
+                  } else if (isAlpha) {
+                    handleScientific('', '', 'e');
+                  } else {
+                    handleScientific('*10^');
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-white font-bold text-xs sm:text-sm border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
               >
-                EXP
+                ×10ˣ
               </button>
             </div>
+
+            {/* Ans (DRG▶) */}
             <div className="flex flex-col items-center">
-              <span className="text-[8px] text-amber-400 font-bold h-2.5">%</span>
+              <span className="text-[7.5px] text-[#d4b045] font-bold h-3 leading-3">DRG▶</span>
               <button
                 type="button"
-                onClick={() => handleScientific('Ans', '%')}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#2a2d34] hover:bg-[#343842] text-zinc-200 font-bold text-xs sm:text-sm shadow-[0_3px_0_#17191d] active:translate-y-0.5 font-mono"
+                onClick={() => {
+                  if (isShift) {
+                    handleScientific('', 'DEG/RAD');
+                  } else {
+                    handleScientific(ans.toString());
+                  }
+                }}
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#30333d] hover:bg-[#3a3e49] text-zinc-100 font-bold text-xs sm:text-sm border border-zinc-700/40 shadow-[0_3px_0_#1c1e24] active:translate-y-0.5"
               >
                 Ans
               </button>
             </div>
+
+            {/* EXE */}
             <div className="flex flex-col items-center">
-              <span className="h-2.5" />
+              <span className="h-3" />
               <button
                 type="button"
                 onClick={handleExe}
-                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-black text-sm sm:text-base shadow-[0_3px_0_#1e40af] active:translate-y-0.5"
-                title="אשר ערך / בצע פעולה (EXE)"
+                className="w-full py-2.5 sm:py-3 rounded-lg bg-[#1f2229] hover:bg-[#282b34] text-white font-black text-sm sm:text-base border border-zinc-700/80 shadow-[0_3px_0_#101115] active:translate-y-0.5"
               >
                 EXE
               </button>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
 };
+
+export default CasioFC200V;

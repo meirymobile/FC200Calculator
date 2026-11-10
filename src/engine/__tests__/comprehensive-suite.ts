@@ -30,6 +30,14 @@ import {
 import { calculateDepreciation } from '../depreciation';
 import { calculateDaysBetween, addDaysToDate } from '../days';
 import { solveBondPrice, solveBondYield } from '../bond';
+import {
+  solveSMPLInterest,
+  solveSMPLFutureValue,
+  solveSMPLPrincipal,
+  solveSMPLRate,
+  solveSMPLDays,
+} from '../smpl';
+import { calculate1VarStats, calculate2VarStats } from '../stat';
 
 export interface TestResult {
   category: string;
@@ -103,7 +111,7 @@ function assertThrows(
   });
 }
 
-console.log('Running 160 Comprehensive Tests for Casio FC-200V Engine...');
+console.log('Running 180 Comprehensive Tests for Casio FC-200V Engine...');
 
 // ==========================================
 // 1. TVM - solvePMT (10 Tests)
@@ -969,6 +977,132 @@ assertApprox('BOND', 'BOND-10', '1-year annual bond',
   101.887, 0.05);
 
 // ==========================================
+// 17. SMPL (Simple Interest) Tests (10 tests)
+// ==========================================
+// Test 17.1: Simple Interest 365 basis: PV=100000, 365 days, 5% -> SI = 5000
+assertApprox('SMPL', 'SMPL-01', 'Simple interest full year 365 basis',
+  { pv: -100000, dys: 365, i: 5, set: '365' },
+  solveSMPLInterest({ pv: -100000, dys: 365, i: 5, set: '365' }),
+  5000, 0.01);
+
+// Test 17.2: Simple Future Value: PV=100000, SI=5000 -> SFV = -105000
+assertApprox('SMPL', 'SMPL-02', 'Simple future value',
+  { pv: -100000, dys: 365, i: 5, set: '365' },
+  solveSMPLFutureValue({ pv: -100000, dys: 365, i: 5, set: '365' }),
+  -105000, 0.01);
+
+// Test 17.3: 360-day basis (Commercial basis): PV=100000, 180 days, 6% -> SI = 3000
+assertApprox('SMPL', 'SMPL-03', 'Simple interest 360 basis 180 days',
+  { pv: -100000, dys: 180, i: 6, set: '360' },
+  solveSMPLInterest({ pv: -100000, dys: 180, i: 6, set: '360' }),
+  3000, 0.01);
+
+// Test 17.4: Short-term loan: PV=50000, 30 days, 12% 365 basis -> SI = 493.15
+assertApprox('SMPL', 'SMPL-04', 'Short-term 30-day interest',
+  { pv: -50000, dys: 30, i: 12, set: '365' },
+  solveSMPLInterest({ pv: -50000, dys: 30, i: 12, set: '365' }),
+  493.15, 0.05);
+
+// Test 17.5: Zero interest rate -> SI = 0
+assertApprox('SMPL', 'SMPL-05', 'Zero interest rate gives 0 SI',
+  { pv: -100000, dys: 100, i: 0, set: '365' },
+  solveSMPLInterest({ pv: -100000, dys: 100, i: 0, set: '365' }),
+  0, 0.001);
+
+// Test 17.6: Solve Principal PV from SI: SI=5000, 365 days, 5% -> PV = -100000
+assertApprox('SMPL', 'SMPL-06', 'Solve Principal PV from Interest',
+  { dys: 365, i: 5, si: 5000 },
+  solveSMPLPrincipal(365, 5, 5000, '365'),
+  -100000, 0.01);
+
+// Test 17.7: Solve Rate I% from SI: PV=100000, SI=5000, 365 days -> I% = 5%
+assertApprox('SMPL', 'SMPL-07', 'Solve Rate I% from Interest',
+  { dys: 365, pv: -100000, si: 5000 },
+  solveSMPLRate(365, -100000, 5000, '365'),
+  5.0, 0.01);
+
+// Test 17.8: Solve Days from SI: PV=100000, I=5%, SI=2500 -> 182.5 -> 183 days
+assertApprox('SMPL', 'SMPL-08', 'Solve Days from Interest',
+  { pv: -100000, i: 5, si: 2500 },
+  solveSMPLDays(-100000, 5, 2500, '365'),
+  183, 1);
+
+// Test 17.9: 90 days quarter 360 basis: PV=20000, I=8% -> SI = 400
+assertApprox('SMPL', 'SMPL-09', 'Quarterly 90-day 360 basis',
+  { pv: -20000, dys: 90, i: 8, set: '360' },
+  solveSMPLInterest({ pv: -20000, dys: 90, i: 8, set: '360' }),
+  400, 0.01);
+
+// Test 17.10: Leap year 366 days on 365 basis: PV=10000, I=10% -> SI = 1002.74
+assertApprox('SMPL', 'SMPL-10', '366 days simple interest',
+  { pv: -10000, dys: 366, i: 10, set: '365' },
+  solveSMPLInterest({ pv: -10000, dys: 366, i: 10, set: '365' }),
+  1002.74, 0.02);
+
+// ==========================================
+// 18. STAT (Statistics & Regression) Tests (10 tests)
+// ==========================================
+// Test 18.1: 1-Variable Mean: [10, 20, 30, 40, 50] -> Mean = 30
+assertApprox('STAT', 'STAT-01', '1-Var Mean calculation',
+  { data: [10, 20, 30, 40, 50] },
+  calculate1VarStats([10, 20, 30, 40, 50]).mean,
+  30.0, 0.001);
+
+// Test 18.2: 1-Variable Sum Σx: [10, 20, 30, 40, 50] -> Σx = 150
+assertApprox('STAT', 'STAT-02', '1-Var Sum Σx',
+  { data: [10, 20, 30, 40, 50] },
+  calculate1VarStats([10, 20, 30, 40, 50]).sumX,
+  150.0, 0.001);
+
+// Test 18.3: 1-Variable Sample Standard Deviation sx: [10, 20, 30, 40, 50] -> sx = 15.811
+assertApprox('STAT', 'STAT-03', '1-Var Sample std dev sx',
+  { data: [10, 20, 30, 40, 50] },
+  calculate1VarStats([10, 20, 30, 40, 50]).sx,
+  15.8114, 0.001);
+
+// Test 18.4: 1-Variable Population Standard Deviation σx: [10, 20, 30, 40, 50] -> σx = 14.142
+assertApprox('STAT', 'STAT-04', '1-Var Population std dev σx',
+  { data: [10, 20, 30, 40, 50] },
+  calculate1VarStats([10, 20, 30, 40, 50]).sigmaX,
+  14.1421, 0.001);
+
+// Test 18.5: Min and Max: [5, 12, -3, 40, 22] -> Min=-3, Max=40
+assertApprox('STAT', 'STAT-05', '1-Var Min and Max',
+  { data: [5, 12, -3, 40, 22] },
+  calculate1VarStats([5, 12, -3, 40, 22]).minX,
+  -3.0, 0.001);
+
+// Test 18.6: 2-Variable Linear Regression Slope b: y = 2x + 1 -> b = 2.0
+assertApprox('STAT', 'STAT-06', 'Linear regression slope b',
+  {},
+  calculate2VarStats([{ x: 1, y: 3 }, { x: 2, y: 5 }, { x: 3, y: 7 }, { x: 4, y: 9 }]).b,
+  2.0, 0.001);
+
+// Test 18.7: Linear Regression Intercept a: y = 2x + 1 -> a = 1.0
+assertApprox('STAT', 'STAT-07', 'Linear regression intercept a',
+  {},
+  calculate2VarStats([{ x: 1, y: 3 }, { x: 2, y: 5 }, { x: 3, y: 7 }, { x: 4, y: 9 }]).a,
+  1.0, 0.001);
+
+// Test 18.8: Perfect correlation r = 1.0
+assertApprox('STAT', 'STAT-08', 'Correlation coefficient r = 1.0',
+  {},
+  calculate2VarStats([{ x: 1, y: 3 }, { x: 2, y: 5 }, { x: 3, y: 7 }, { x: 4, y: 9 }]).r,
+  1.0, 0.001);
+
+// Test 18.9: Negative correlation r = -1.0: y = -3x + 10
+assertApprox('STAT', 'STAT-09', 'Negative correlation r = -1.0',
+  {},
+  calculate2VarStats([{ x: 1, y: 7 }, { x: 2, y: 4 }, { x: 3, y: 1 }]).r,
+  -1.0, 0.001);
+
+// Test 18.10: Empty data safety
+assertApprox('STAT', 'STAT-10', 'Empty stats safety',
+  {},
+  calculate1VarStats([]).n,
+  0, 0.001);
+
+// ==========================================
 // Print Summary
 // ==========================================
 const totalTests = results.length;
@@ -987,7 +1121,7 @@ if (failedTests.length > 0) {
     console.error(`- [${f.testId}] ${f.category} - ${f.name}: Expected ${f.expected}, got ${f.actual}`);
   }
 } else {
-  console.log('ALL 160 TESTS PASSED WITH 100% ACCURACY!');
+  console.log('ALL 180 TESTS PASSED WITH 100% ACCURACY!');
 }
 
 export { results };

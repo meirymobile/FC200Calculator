@@ -51,3 +51,4 @@ export function calculateBreakEvenPoint(p: BEVNParams): { bepUnits: number; bepS
   const bepSales = bepUnits * p.prc;
   return { bepUnits, bepSales };
 }
+
