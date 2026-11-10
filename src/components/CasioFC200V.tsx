@@ -912,7 +912,10 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
               </span>
               <button
                 type="button"
-                onClick={() => setSoundOn(toggleSound())}
+                onClick={() => {
+                  playKeyClick('func');
+                  setSoundOn(toggleSound());
+                }}
                 className="p-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
                 title={soundOn ? 'השתק צליל מקשים' : 'הפעל צליל מקשים'}
               >
@@ -923,7 +926,10 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
             {/* New Settings Button (Green Box) */}
             <button
               type="button"
-              onClick={onOpenSettings}
+              onClick={() => {
+                playKeyClick('func');
+                onOpenSettings?.();
+              }}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#252830] hover:bg-[#323642] text-zinc-200 hover:text-white text-[10px] sm:text-[10.5px] font-bold border border-zinc-700/80 shadow-sm active:scale-95 transition-all"
               title="הגדרות ותפריט סטודיו"
             >
@@ -1223,6 +1229,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
             <button
               type="button"
               onClick={() => {
+                playKeyClick('func');
                 if (isShift) {
                   setIsStoreMode(true);
                   setIsShift(false);

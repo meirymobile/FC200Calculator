@@ -1,8 +1,12 @@
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+
 /**
  * Web Audio API synthesizer for tactile mechanical calculator key clicks
+ * and ultra-responsive mobile haptic feedback
  */
 let audioCtx: AudioContext | null = null;
 let soundEnabled = true;
+let hapticsEnabled = true;
 
 export function toggleSound(): boolean {
   soundEnabled = !soundEnabled;
@@ -13,15 +17,47 @@ export function isSoundEnabled(): boolean {
   return soundEnabled;
 }
 
-export function playKeyClick(type: 'num' | 'func' | 'solve' | 'del' = 'num') {
-  // Mobile haptic vibration if supported
+export function toggleHaptics(): boolean {
+  hapticsEnabled = !hapticsEnabled;
+  return hapticsEnabled;
+}
+
+export function isHapticsEnabled(): boolean {
+  return hapticsEnabled;
+}
+
+/**
+ * Trigger immediate short tactile vibration on mobile devices
+ */
+export async function triggerHaptic(type: 'num' | 'func' | 'solve' | 'del' = 'num') {
+  if (!hapticsEnabled) return;
+
+  // 1. Try Capacitor Native Haptics (for APK and iOS Native)
+  try {
+    if (type === 'solve') {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+    } else {
+      await Haptics.impact({ style: ImpactStyle.Light });
+    }
+    return;
+  } catch {
+    // fallback to navigator.vibrate
+  }
+
+  // 2. Web Vibration API for Mobile Browsers (Chrome/Safari/Firefox mobile)
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     try {
-      navigator.vibrate(type === 'solve' ? 18 : 8);
+      const ms = type === 'solve' ? 25 : 15;
+      navigator.vibrate(ms);
     } catch {
       // ignore
     }
   }
+}
+
+export function playKeyClick(type: 'num' | 'func' | 'solve' | 'del' = 'num') {
+  // Trigger short tactile vibration immediately
+  triggerHaptic(type);
 
   if (!soundEnabled) return;
 
@@ -43,7 +79,7 @@ export function playKeyClick(type: 'num' | 'func' | 'solve' | 'del' = 'num') {
     const now = audioCtx.currentTime;
 
     if (type === 'solve') {
-      // Deeper double click confirmation
+      // Deeper confirmation click
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(440, now);
       osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
@@ -79,4 +115,3 @@ export function playKeyClick(type: 'num' | 'func' | 'solve' | 'del' = 'num') {
     // ignore audio errors
   }
 }
-

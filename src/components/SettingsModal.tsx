@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Calculator,
@@ -12,9 +12,16 @@ import {
   Briefcase,
   Volume2,
   VolumeX,
+  Vibrate,
 } from 'lucide-react';
 import { PresetType } from './FinancialPresets';
-import { toggleSound, isSoundEnabled } from '../utils/soundEffects';
+import {
+  toggleSound,
+  isSoundEnabled,
+  toggleHaptics,
+  isHapticsEnabled,
+  triggerHaptic,
+} from '../utils/soundEffects';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -35,7 +42,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenGuide,
   onOpenInstall,
 }) => {
-  const [soundOn, setSoundOn] = React.useState(isSoundEnabled());
+  const [soundOn, setSoundOn] = useState(isSoundEnabled());
+  const [hapticsOn, setHapticsOn] = useState(isHapticsEnabled());
 
   if (!isOpen) return null;
 
@@ -234,9 +242,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {soundOn ? 'פעיל' : 'מושתק'}
             </span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const next = toggleHaptics();
+              setHapticsOn(next);
+              if (next) triggerHaptic('solve');
+            }}
+            className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 flex items-center justify-between text-xs font-bold text-zinc-200 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Vibrate className={`w-4 h-4 ${hapticsOn ? 'text-amber-400' : 'text-zinc-500'}`} />
+              <span>רטט מגע קצר בכל לחיצה (Haptic Feedback)</span>
+            </div>
+            <span className={`text-[11px] px-2 py-0.5 rounded ${hapticsOn ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
+              {hapticsOn ? 'פעיל' : 'כבוי'}
+            </span>
+          </button>
         </div>
 
       </div>
     </div>
   );
 };
+
