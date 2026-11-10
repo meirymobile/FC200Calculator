@@ -3,6 +3,7 @@ import { CasioFC200V } from './components/CasioFC200V';
 import { ReportsPanel } from './components/ReportsPanel';
 import { UserGuideModal } from './components/UserGuideModal';
 import { MobileInstallModal } from './components/MobileInstallModal';
+import { SettingsModal } from './components/SettingsModal';
 import { FinancialPresets, PresetType } from './components/FinancialPresets';
 import {
   StepExplanation,
@@ -58,6 +59,7 @@ export const App: React.FC = () => {
   // Modals state
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // View mode for mobile/desktop
   const [mobileTab, setMobileTab] = useState<'calc' | 'reports'>('calc');
@@ -136,8 +138,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0f1115] text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
-      {/* Top Application Header */}
-      <header className="sticky top-0 z-30 bg-[#14161b]/95 backdrop-blur border-b border-zinc-800/80 px-4 sm:px-6 py-2.5">
+      {/* Top Application Header - Hidden on mobile, shown on desktop (lg:block) */}
+      <header className="hidden lg:block sticky top-0 z-30 bg-[#14161b]/95 backdrop-blur border-b border-zinc-800/80 px-4 sm:px-6 py-2.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
           {/* Logo & Title */}
@@ -249,9 +251,11 @@ export const App: React.FC = () => {
       </header>
 
       {/* Main Studio Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 flex flex-col justify-center">
-        {/* Quick Presets Bar */}
-        <FinancialPresets onSelectPreset={handleSelectPreset} />
+      <main className="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-6 flex flex-col justify-center">
+        {/* Quick Presets Bar - Hidden on mobile, shown on desktop (lg:block) */}
+        <div className="hidden lg:block mb-4">
+          <FinancialPresets onSelectPreset={handleSelectPreset} />
+        </div>
 
         {/* Responsive Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -268,6 +272,7 @@ export const App: React.FC = () => {
                 onAmortizationUpdated={handleAmortizationUpdated}
                 onCashFlowUpdated={handleCashFlowUpdated}
                 onOpenMobileGuide={() => setIsMobileModalOpen(true)}
+                onOpenSettings={() => setIsSettingsOpen(true)}
                 presetData={presetData}
               />
             </div>
@@ -295,6 +300,22 @@ export const App: React.FC = () => {
       </main>
 
       {/* Modals */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        layoutMode={layoutMode}
+        onSelectLayout={(mode) => {
+          setLayoutMode(mode);
+          if (mode === 'reportsOnly') {
+            setMobileTab('reports');
+          } else {
+            setMobileTab('calc');
+          }
+        }}
+        onSelectPreset={handleSelectPreset}
+        onOpenGuide={() => setIsGuideOpen(true)}
+        onOpenInstall={() => setIsMobileModalOpen(true)}
+      />
       <UserGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
       <MobileInstallModal isOpen={isMobileModalOpen} onClose={() => setIsMobileModalOpen(false)} />
     </div>

@@ -48,13 +48,14 @@ import {
   generateCashFlowSolution,
 } from '../engine/solutionsGenerator';
 import { playKeyClick, toggleSound, isSoundEnabled } from '../utils/soundEffects';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Settings } from 'lucide-react';
 
 interface CasioFC200VProps {
   onSolutionGenerated: (solution: StepExplanation) => void;
   onAmortizationUpdated: (summary: AmortizationSummary, params: TVMParams) => void;
   onCashFlowUpdated: (params: CashFlowParams, results: CashFlowResults) => void;
   onOpenMobileGuide: () => void;
+  onOpenSettings?: () => void;
   presetData?: {
     mode: CalculatorMode;
     tvm?: TVMParams;
@@ -69,6 +70,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   onAmortizationUpdated,
   onCashFlowUpdated,
   onOpenMobileGuide,
+  onOpenSettings,
   presetData,
 }) => {
   // Mode state
@@ -902,18 +904,31 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
             </div>
           </div>
 
-          {/* Right: 2nd edition & Sound toggle */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-[11px] text-zinc-300 font-medium tracking-tight">
-              2nd edition
-            </span>
+          {/* Right: 2nd edition & New Settings Button (exact green box location) */}
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] sm:text-[11px] text-zinc-300 font-medium tracking-tight">
+                2nd edition
+              </span>
+              <button
+                type="button"
+                onClick={() => setSoundOn(toggleSound())}
+                className="p-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+                title={soundOn ? 'השתק צליל מקשים' : 'הפעל צליל מקשים'}
+              >
+                {soundOn ? <Volume2 className="w-3.5 h-3.5 text-blue-400" /> : <VolumeX className="w-3.5 h-3.5 text-zinc-500" />}
+              </button>
+            </div>
+
+            {/* New Settings Button (Green Box) */}
             <button
               type="button"
-              onClick={() => setSoundOn(toggleSound())}
-              className="p-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
-              title={soundOn ? 'השתק צליל מקשים' : 'הפעל צליל מקשים'}
+              onClick={onOpenSettings}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#252830] hover:bg-[#323642] text-zinc-200 hover:text-white text-[10px] sm:text-[10.5px] font-bold border border-zinc-700/80 shadow-sm active:scale-95 transition-all"
+              title="הגדרות ותפריט סטודיו"
             >
-              {soundOn ? <Volume2 className="w-3.5 h-3.5 text-blue-400" /> : <VolumeX className="w-3.5 h-3.5 text-zinc-500" />}
+              <Settings className="w-3 h-3 text-blue-400" />
+              <span>Settings</span>
             </button>
           </div>
         </div>
