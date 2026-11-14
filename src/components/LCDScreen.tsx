@@ -16,6 +16,7 @@ interface LCDScreenProps {
   timing: PaymentTiming;
   statusMessage?: string;
   compExpression?: string;
+  isPoweredOn?: boolean;
 }
 
 export const LCDScreen: React.FC<LCDScreenProps> = ({
@@ -32,7 +33,21 @@ export const LCDScreen: React.FC<LCDScreenProps> = ({
   timing,
   statusMessage,
   compExpression,
+  isPoweredOn = true,
 }) => {
+  if (!isPoweredOn) {
+    return (
+      <div
+        dir="ltr"
+        style={{ direction: 'ltr' }}
+        className="relative w-full rounded-md p-3 sm:p-4 bg-[#303832] shadow-[inset_0_3px_8px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(0,0,0,0.6)] border-2 border-[#121413] text-[#3e4840] font-['Share_Tech_Mono',monospace] select-none overflow-hidden h-[96px] sm:h-[110px] flex items-center justify-center"
+      >
+        <div className="text-[11px] font-bold tracking-widest uppercase opacity-25 select-none">
+          CASIO FC-200V • OFF (PRESS ON)
+        </div>
+      </div>
+    );
+  }
   return (
     <div dir="ltr" style={{ direction: 'ltr' }} className="relative w-full rounded-md p-3 sm:p-4 bg-[#92a494] shadow-[inset_0_3px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.15)] border-2 border-[#121413] text-[#142017] font-['Share_Tech_Mono',monospace] select-none overflow-hidden">
       {/* Subtle LCD pixel grid overlay */}

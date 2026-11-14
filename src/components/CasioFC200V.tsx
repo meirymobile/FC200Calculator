@@ -48,7 +48,9 @@ import {
   generateCashFlowSolution,
 } from '../engine/solutionsGenerator';
 import { playKeyClick, toggleSound, isSoundEnabled } from '../utils/soundEffects';
-import { Volume2, VolumeX, Settings } from 'lucide-react';
+import { Volume2, VolumeX, Settings, ChevronDown, ChevronUp, Power } from 'lucide-react';
+import { requestWakeLock, releaseWakeLock } from '../utils/wakeLock';
+import { ExpandedTouchScreen } from './ExpandedTouchScreen';
 
 interface CasioFC200VProps {
   onSolutionGenerated: (solution: StepExplanation) => void;
@@ -80,6 +82,24 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [angleUnit, setAngleUnit] = useState<'DEG' | 'RAD'>('DEG');
   const [soundOn, setSoundOn] = useState<boolean>(isSoundEnabled());
+
+  // Power & Display States (Feature: Expandable Touch Screen & Power ON/OFF with Screen WakeLock)
+  const [isPoweredOn, setIsPoweredOn] = useState<boolean>(true);
+  const [isScreenExpanded, setIsScreenExpanded] = useState<boolean>(false);
+  const [isParamHighlighted, setIsParamHighlighted] = useState<boolean>(false);
+  const [compHistory, setCompHistory] = useState<Array<{ expr: string; result: string }>>([]);
+
+  // Auto Screen Wake Lock management (Keeps phone screen on while calculator is ON)
+  useEffect(() => {
+    if (isPoweredOn) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+    return () => {
+      releaseWakeLock();
+    };
+  }, [isPoweredOn]);
 
   // Short Cut register memory
   const [shortCut1, setShortCut1] = useState<CalculatorMode>('CMPD');
@@ -377,35 +397,89 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   const safeIndex = Math.min(paramIndex, menuItems.length - 1);
   const currentItem = menuItems[safeIndex] || menuItems[0];
 
+  // Power handlers
+  const handlePowerOn = () => {
+    setIsPoweredOn(true);
+    requestWakeLock();
+    playKeyClick('func');
+    setStatusMessage('CASIO FC-200V ON');
+  };
+
+  const handlePowerOff = () => {
+    setIsPoweredOn(false);
+    setIsScreenExpanded(false);
+    releaseWakeLock();
+    playKeyClick('del');
+    setIsEditing(false);
+    setEditValue('');
+    setIsParamHighlighted(false);
+    setStatusMessage('');
+  };
+
+  // Touch screen handlers
+  const handleTouchSelectParam = (index: number) => {
+    if (!isPoweredOn) return;
+    setParamIndex(index);
+    const items = getMenuItems();
+    const selected = items[index];
+    if (selected) {
+      setIsEditing(true);
+      setEditValue(String(selected.value));
+      setIsParamHighlighted(true);
+    }
+  };
+
+  const handleTouchSolveParam = (key: string) => {
+    if (!isPoweredOn) return;
+    handleSolve(key);
+  };
+
+  const handleToggleTiming = () => {
+    if (!isPoweredOn) return;
+    const newTiming: PaymentTiming = tvmParams.set === 'End' ? 'Begin' : 'End';
+    const updatedTvm = { ...tvmParams, set: newTiming };
+    setTvmParams(updatedTvm);
+    const amort = calculateAmortizationSummary(updatedTvm, amortPm1, amortPm2);
+    onAmortizationUpdated(amort, updatedTvm);
+    setStatusMessage(`SET: ${newTiming.toUpperCase()}`);
+  };
+
   // Up & Down navigation in parameter menu
   const handleUp = () => {
+    if (!isPoweredOn) return;
     playKeyClick('func');
     if (mode === 'COMP') return;
     setIsEditing(false);
     setEditValue('');
+    setIsParamHighlighted(false);
     setParamIndex((prev) => (prev > 0 ? prev - 1 : menuItems.length - 1));
   };
 
   const handleDown = () => {
+    if (!isPoweredOn) return;
     playKeyClick('func');
     if (mode === 'COMP') return;
     setIsEditing(false);
     setEditValue('');
+    setIsParamHighlighted(false);
     setParamIndex((prev) => (prev < menuItems.length - 1 ? prev + 1 : 0));
   };
 
   // Switch mode
   const handleSelectMode = (newMode: CalculatorMode) => {
+    if (!isPoweredOn) return;
     playKeyClick('func');
     setMode(newMode);
     setIsEditing(false);
     setEditValue('');
+    setIsParamHighlighted(false);
     setParamIndex(newMode === 'CMPD' ? 1 : 0);
     setStatusMessage('');
   };
 
   // Append character/digit
   const handleInputChar = (char: string) => {
+    if (!isPoweredOn) return;
     playKeyClick('num');
 
     // Handle variable storing if STO was pressed
@@ -435,6 +509,13 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
       return;
     }
 
+    // Touch Screen Input: if param was highlighted, first typed character replaces it
+    if (isParamHighlighted) {
+      setIsParamHighlighted(false);
+      setEditValue(char);
+      return;
+    }
+
     if (!isEditing) {
       setIsEditing(true);
       setEditValue(char);
@@ -445,9 +526,15 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // Backspace / DEL
   const handleDelete = () => {
+    if (!isPoweredOn) return;
     playKeyClick('del');
     if (mode === 'COMP') {
       setCompExpr((prev) => prev.slice(0, -1));
+      return;
+    }
+    if (isParamHighlighted) {
+      setIsParamHighlighted(false);
+      setEditValue('');
       return;
     }
     if (isEditing) {
@@ -460,9 +547,16 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     }
   };
 
-  // AC / Clear
+  // AC / Clear / OFF
   const handleClear = () => {
+    if (!isPoweredOn) return;
+    if (isShift) {
+      setIsShift(false);
+      handlePowerOff();
+      return;
+    }
     playKeyClick('del');
+    setIsParamHighlighted(false);
     if (mode === 'COMP') {
       setCompExpr('');
       setCompResult('0');
@@ -475,10 +569,16 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // Scientific functions via Shift
   const handleScientific = (val: string, shiftVal?: string, alphaVal?: string) => {
+    if (!isPoweredOn) return;
     playKeyClick('func');
     let toInsert = val;
 
     if (isShift && shiftVal) {
+      if (shiftVal === 'OFF') {
+        setIsShift(false);
+        handlePowerOff();
+        return;
+      }
       toInsert = shiftVal;
       setIsShift(false);
     } else if (isAlpha && alphaVal) {
@@ -531,6 +631,11 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     if (mode === 'COMP') {
       setCompExpr((prev) => prev + toInsert);
     } else {
+      if (isParamHighlighted) {
+        setIsParamHighlighted(false);
+        setEditValue(toInsert);
+        return;
+      }
       // In menu mode, if it's a number/operator
       if (!isEditing) {
         setIsEditing(true);
@@ -543,7 +648,9 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
   // EXE button (Commit parameter or evaluate formula)
   const handleExe = () => {
+    if (!isPoweredOn) return;
     playKeyClick('func');
+    setIsParamHighlighted(false);
     if (mode === 'COMP') {
       try {
         const evalContext: EvalContext = {
@@ -554,6 +661,9 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
         const res = evaluateMathExpression(compExpr, evalContext);
         setAns(res);
         setCompResult(res.toString());
+        if (compExpr.trim()) {
+          setCompHistory((prev) => [...prev, { expr: compExpr, result: res.toString() }].slice(-10));
+        }
       } catch (err: any) {
         setCompResult(err.message || 'ERROR');
       }
@@ -661,11 +771,23 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
   };
 
   // SOLVE button: the key of FC-200V
-  const handleSolve = () => {
+  const handleSolve = (overrideKey?: string) => {
+    if (!isPoweredOn) return;
     playKeyClick('solve');
+    setIsParamHighlighted(false);
     if (mode === 'COMP') {
       handleExe();
       return;
+    }
+
+    const items = getMenuItems();
+    let key = currentItem.key;
+    if (overrideKey) {
+      key = overrideKey;
+      const idx = items.findIndex((it) => it.key === overrideKey);
+      if (idx !== -1) {
+        setParamIndex(idx);
+      }
     }
 
     try {
@@ -906,10 +1028,28 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
 
           {/* Right: 2nd edition & New Settings Button (exact green box location) */}
           <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="text-[10px] sm:text-[11px] text-zinc-300 font-medium tracking-tight">
                 2nd edition
               </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPoweredOn) {
+                    handlePowerOff();
+                  } else {
+                    handlePowerOn();
+                  }
+                }}
+                className={`p-1 rounded-md transition-colors ${
+                  isPoweredOn
+                    ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                    : 'bg-zinc-800 text-zinc-500 hover:text-white'
+                }`}
+                title={isPoweredOn ? 'כיבוי מחשבון (OFF) - שחרור מסך' : 'הדלקת מחשבון (ON) - השארת מסך דולק'}
+              >
+                <Power className="w-3.5 h-3.5" />
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -940,24 +1080,71 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
           </div>
         </div>
 
-        {/* Dual-Line LCD Screen */}
-        <div className="mb-3">
-          <LCDScreen
-            mode={mode}
-            paramName={currentItem.label}
-            paramValue={String(currentItem.value)}
-            editValue={editValue}
-            isEditing={isEditing}
-            canSolve={currentItem.canSolve}
-            hasUp={safeIndex > 0}
-            hasDown={safeIndex < menuItems.length - 1}
-            isShift={isShift}
-            isAlpha={isAlpha}
-            timing={tvmParams.set}
-            statusMessage={statusMessage}
-            compExpression={compExpr}
-          />
-        </div>
+        {/* Screen Display: Expanded Touch Screen OR Classic Dual-Line LCD + Physical Key Controls */}
+        {isScreenExpanded ? (
+          <div className="mb-2.5">
+            <ExpandedTouchScreen
+              mode={mode}
+              menuItems={menuItems}
+              activeIndex={safeIndex}
+              isEditing={isEditing}
+              editValue={editValue}
+              onSelectParam={handleTouchSelectParam}
+              onSolveParam={handleTouchSolveParam}
+              onToggleTiming={handleToggleTiming}
+              onCollapse={() => {
+                playKeyClick('func');
+                setIsScreenExpanded(false);
+              }}
+              onSelectMode={handleSelectMode}
+              timing={tvmParams.set}
+              isShift={isShift}
+              isAlpha={isAlpha}
+              statusMessage={statusMessage}
+              compExpression={compExpr}
+              compResult={compResult}
+              compHistory={compHistory}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Dual-Line LCD Screen */}
+            <div className="mb-1.5">
+              <LCDScreen
+                mode={mode}
+                paramName={currentItem.label}
+                paramValue={String(currentItem.value)}
+                editValue={editValue}
+                isEditing={isEditing}
+                canSolve={currentItem.canSolve}
+                hasUp={safeIndex > 0}
+                hasDown={safeIndex < menuItems.length - 1}
+                isShift={isShift}
+                isAlpha={isAlpha}
+                timing={tvmParams.set}
+                statusMessage={statusMessage}
+                compExpression={compExpr}
+                isPoweredOn={isPoweredOn}
+              />
+            </div>
+
+            {/* Small Expand Button under LCD Screen */}
+            {isPoweredOn && (
+              <div className="flex justify-center -mt-1 mb-2 z-10 relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playKeyClick('func');
+                    setIsScreenExpanded(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#1c1e24] hover:bg-[#252832] text-zinc-300 hover:text-white border border-zinc-700/60 shadow text-[10px] font-bold transition-all active:scale-95 group"
+                  title="הרחבת מסך מגע (Touch Screen)"
+                >
+                  <ChevronDown className="w-3.5 h-3.5 text-emerald-400 group-hover:translate-y-0.5 transition-transform animate-pulse" />
+                  <span>הרחבת מסך מגע</span>
+                </button>
+              </div>
+            )}
 
         {/* ============================================================== */}
         {/* 1. TOP CONTROL BLOCK (SHIFT, ALPHA, REPLAY D-PAD, SETUP, ON) */}
@@ -1047,12 +1234,19 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  playKeyClick('func');
-                  handleClear();
-                  setStatusMessage('CASIO FC-200V ON');
+                  if (!isPoweredOn) {
+                    handlePowerOn();
+                  } else if (isShift) {
+                    setIsShift(false);
+                    handlePowerOff();
+                  } else {
+                    playKeyClick('func');
+                    handleClear();
+                    setStatusMessage('CASIO FC-200V ON');
+                  }
                 }}
                 className="w-7 h-5 sm:w-8 sm:h-5.5 rounded-full bg-[#2a2c33] hover:bg-[#343740] border border-zinc-700/60 shadow active:scale-95"
-                title="הפעלת מחשבון"
+                title="הפעלת מחשבון (ON) / SHIFT+ON לכיבוי"
               />
             </div>
           </div>
@@ -1128,7 +1322,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
             <span className="h-3" />
             <button
               type="button"
-              onClick={handleSolve}
+              onClick={() => handleSolve()}
               className="w-full py-1.5 rounded-lg bg-[#6ea4d8] hover:bg-[#80b4e6] text-[#0d2a4a] text-[12px] font-black tracking-wider border border-[#528fc7] shadow-[0_2px_8px_rgba(110,164,216,0.4)] active:translate-y-0.5"
               title="חשב פתרון עבור הפרמטר הנוכחי (SOLVE)"
             >
@@ -1327,6 +1521,8 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
             </button>
           </div>
         </div>
+      </>
+    )}
 
         {/* ============================================================== */}
         {/* 5. 4×5 NUMERIC & SCIENTIFIC BLOCK (20 KEYS)                    */}
