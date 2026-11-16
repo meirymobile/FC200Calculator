@@ -36,6 +36,18 @@ export function formatCasioLCD(val: number | string | null | undefined): string 
   const maxDecimals = Math.max(0, 10 - intDigits);
 
   let formatted = abs.toFixed(maxDecimals);
+
+  // If rounding caused an overflow to >= 1e10 (e.g. 9999999999.9 -> 10000000000)
+  if (Number(formatted) >= 1e10) {
+    const expStr = Number(formatted).toExponential(5);
+    const [mantissa, exponent] = expStr.split('e');
+    const expNum = parseInt(exponent, 10);
+    const sign = expNum >= 0 ? '+' : '';
+    const cleanMantissa = mantissa.replace(/\.?0+$/, '');
+    const prefix = isNeg ? '-' : '';
+    return `${prefix}${cleanMantissa} ${sign}${expNum}`;
+  }
+
   // Clean trailing decimal zeros and trailing dot
   if (formatted.includes('.')) {
     formatted = formatted.replace(/0+$/, '').replace(/\.$/, '');
