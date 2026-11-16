@@ -77,7 +77,7 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
   };
 
   const handleCopyValue = async (value: string | number, label: string) => {
-    const strVal = String(value);
+    const strVal = formatCasioLCD(value);
     triggerHaptic('solve');
     const success = await copyNumberToClipboard(strVal);
     if (success) {
@@ -289,7 +289,7 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
         >
           {menuItems.map((item, index) => {
             const isSelected = index === activeIndex;
-            const displayValue = isSelected && isEditing ? editValue : String(item.value);
+            const displayValue = isSelected && isEditing ? editValue : formatCasioLCD(item.value);
 
             return (
               <div
@@ -357,7 +357,7 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
 
                 {/* Right: Parameter Value & Actions (Strict 10-digit limit + Copy & Paste buttons) */}
                 <div className="flex items-center gap-1.5 font-mono ml-auto">
-                  {isSelected ? (
+                  {isSelected && isEditing ? (
                     /* Active editing state with blinking LCD cursor */
                     <div className="flex items-center bg-[#92a494] text-[#142017] px-2 py-0.5 rounded font-extrabold text-sm sm:text-base tracking-tight shadow-inner">
                       <span>{displayValue || '0'}</span>
@@ -365,7 +365,7 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
                     </div>
                   ) : (
                     /* Standard displayed value (strictly max 10 digits via formatCasioLCD) */
-                    <div className="text-sm sm:text-base font-bold tracking-tight px-1 truncate max-w-[130px] sm:max-w-[150px] text-right">
+                    <div className={`text-sm sm:text-base font-bold tracking-tight px-1 truncate max-w-[140px] sm:max-w-[160px] text-right ${isSelected ? 'text-[#a6baa8]' : 'text-[#101912]'}`}>
                       {formatCasioLCD(displayValue)}
                     </div>
                   )}

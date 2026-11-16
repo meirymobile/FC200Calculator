@@ -48,6 +48,7 @@ import {
   generateCashFlowSolution,
 } from '../engine/solutionsGenerator';
 import { playKeyClick, toggleSound, isSoundEnabled } from '../utils/soundEffects';
+import { formatCasioLCD } from '../utils/casioFormat';
 import { Volume2, VolumeX, Settings, ChevronDown, ChevronUp, Power, ClipboardPaste } from 'lucide-react';
 import { requestWakeLock, releaseWakeLock } from '../utils/wakeLock';
 import { copyNumberToClipboard, pasteNumberFromClipboard } from '../utils/clipboard';
@@ -279,85 +280,85 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
         const sfv = solveSMPLFutureValue(smplParams);
         return [
           { key: 'smpl_set', label: 'Set', value: smplParams.set, canSolve: false },
-          { key: 'smpl_dys', label: 'Dys', value: smplParams.dys, canSolve: true },
-          { key: 'smpl_i', label: 'I%', value: `${smplParams.i}`, canSolve: true },
-          { key: 'smpl_pv', label: 'PV', value: `${smplParams.pv}`, canSolve: true },
-          { key: 'smpl_si', label: 'SI', value: si, canSolve: true },
-          { key: 'smpl_sfv', label: 'SFV', value: sfv, canSolve: true },
+          { key: 'smpl_dys', label: 'Dys', value: formatCasioLCD(smplParams.dys), canSolve: true },
+          { key: 'smpl_i', label: 'I%', value: formatCasioLCD(smplParams.i), canSolve: true },
+          { key: 'smpl_pv', label: 'PV', value: formatCasioLCD(smplParams.pv), canSolve: true },
+          { key: 'smpl_si', label: 'SI', value: formatCasioLCD(si), canSolve: true },
+          { key: 'smpl_sfv', label: 'SFV', value: formatCasioLCD(sfv), canSolve: true },
         ];
       }
       case 'CMPD':
         return [
           { key: 'set', label: 'Set', value: tvmParams.set, canSolve: false, isTiming: true },
-          { key: 'n', label: 'n', value: tvmParams.n, canSolve: true },
-          { key: 'i', label: 'I%', value: `${tvmParams.i}`, canSolve: true },
-          { key: 'pv', label: 'PV', value: `${tvmParams.pv}`, canSolve: true },
-          { key: 'pmt', label: 'PMT', value: `${tvmParams.pmt}`, canSolve: true },
-          { key: 'fv', label: 'FV', value: `${tvmParams.fv}`, canSolve: true },
-          { key: 'py', label: 'P/Y', value: tvmParams.py, canSolve: false },
-          { key: 'cy', label: 'C/Y', value: tvmParams.cy, canSolve: false },
+          { key: 'n', label: 'n', value: formatCasioLCD(tvmParams.n), canSolve: true },
+          { key: 'i', label: 'I%', value: formatCasioLCD(tvmParams.i), canSolve: true },
+          { key: 'pv', label: 'PV', value: formatCasioLCD(tvmParams.pv), canSolve: true },
+          { key: 'pmt', label: 'PMT', value: formatCasioLCD(tvmParams.pmt), canSolve: true },
+          { key: 'fv', label: 'FV', value: formatCasioLCD(tvmParams.fv), canSolve: true },
+          { key: 'py', label: 'P/Y', value: formatCasioLCD(tvmParams.py), canSolve: false },
+          { key: 'cy', label: 'C/Y', value: formatCasioLCD(tvmParams.cy), canSolve: false },
         ];
       case 'AMRT':
       case 'AMORT': {
         const amort = calculateAmortizationSummary(tvmParams, amortPm1, amortPm2);
         return [
-          { key: 'pm1', label: 'PM1', value: amortPm1, canSolve: false },
-          { key: 'pm2', label: 'PM2', value: amortPm2, canSolve: false },
-          { key: 'bal', label: 'BAL', value: amort.bal, canSolve: true },
-          { key: 'int', label: 'INT', value: amort.int, canSolve: true },
-          { key: 'prn', label: 'PRN', value: amort.prn, canSolve: true },
-          { key: 'sumInt', label: 'ΣINT', value: amort.sumInt, canSolve: true },
-          { key: 'sumPrn', label: 'ΣPRN', value: amort.sumPrn, canSolve: true },
+          { key: 'pm1', label: 'PM1', value: formatCasioLCD(amortPm1), canSolve: false },
+          { key: 'pm2', label: 'PM2', value: formatCasioLCD(amortPm2), canSolve: false },
+          { key: 'bal', label: 'BAL', value: formatCasioLCD(amort.bal), canSolve: true },
+          { key: 'int', label: 'INT', value: formatCasioLCD(amort.int), canSolve: true },
+          { key: 'prn', label: 'PRN', value: formatCasioLCD(amort.prn), canSolve: true },
+          { key: 'sumInt', label: 'ΣINT', value: formatCasioLCD(amort.sumInt), canSolve: true },
+          { key: 'sumPrn', label: 'ΣPRN', value: formatCasioLCD(amort.sumPrn), canSolve: true },
         ];
       }
       case 'CASH': {
         const res = solveCashFlow(cfParams);
         return [
-          { key: 'rate', label: 'I%', value: `${cfParams.rate}`, canSolve: false },
-          { key: 'cf0', label: 'CF0', value: `${cfParams.cf0}`, canSolve: false },
+          { key: 'rate', label: 'I%', value: formatCasioLCD(cfParams.rate), canSolve: false },
+          { key: 'cf0', label: 'CF0', value: formatCasioLCD(cfParams.cf0), canSolve: false },
           ...cfParams.flows.map((f, idx) => ({
             key: `cf_${idx}`,
             label: `C${idx + 1}`,
-            value: `${f.flow}`,
+            value: formatCasioLCD(f.flow),
             canSolve: false,
           })),
-          { key: 'npv', label: 'NPV', value: res.npv, canSolve: true },
-          { key: 'irr', label: 'IRR', value: res.irr !== null ? `${res.irr}%` : 'ERR', canSolve: true },
-          { key: 'pbp', label: 'PBP', value: res.pbp !== null ? res.pbp : 'ERR', canSolve: true },
-          { key: 'nfv', label: 'NFV', value: res.nfv, canSolve: true },
+          { key: 'npv', label: 'NPV', value: formatCasioLCD(res.npv), canSolve: true },
+          { key: 'irr', label: 'IRR', value: res.irr !== null ? `${formatCasioLCD(res.irr)}%` : 'ERR', canSolve: true },
+          { key: 'pbp', label: 'PBP', value: res.pbp !== null ? formatCasioLCD(res.pbp) : 'ERR', canSolve: true },
+          { key: 'nfv', label: 'NFV', value: formatCasioLCD(res.nfv), canSolve: true },
         ];
       }
       case 'STAT': {
         const stats = calculate1VarStats(statData);
         return [
-          { key: 'stat_n', label: 'n', value: stats.n, canSolve: false },
-          { key: 'stat_xbar', label: 'x̄', value: stats.mean, canSolve: true },
-          { key: 'stat_sumx', label: 'Σx', value: stats.sumX, canSolve: true },
-          { key: 'stat_sumx2', label: 'Σx²', value: stats.sumX2, canSolve: true },
-          { key: 'stat_sx', label: 'sx', value: stats.sx, canSolve: true },
-          { key: 'stat_sigmax', label: 'σx', value: stats.sigmaX, canSolve: true },
-          { key: 'stat_min', label: 'minX', value: stats.minX, canSolve: false },
-          { key: 'stat_max', label: 'maxX', value: stats.maxX, canSolve: false },
+          { key: 'stat_n', label: 'n', value: formatCasioLCD(stats.n), canSolve: false },
+          { key: 'stat_xbar', label: 'x̄', value: formatCasioLCD(stats.mean), canSolve: true },
+          { key: 'stat_sumx', label: 'Σx', value: formatCasioLCD(stats.sumX), canSolve: true },
+          { key: 'stat_sumx2', label: 'Σx²', value: formatCasioLCD(stats.sumX2), canSolve: true },
+          { key: 'stat_sx', label: 'sx', value: formatCasioLCD(stats.sx), canSolve: true },
+          { key: 'stat_sigmax', label: 'σx', value: formatCasioLCD(stats.sigmaX), canSolve: true },
+          { key: 'stat_min', label: 'minX', value: formatCasioLCD(stats.minX), canSolve: false },
+          { key: 'stat_max', label: 'maxX', value: formatCasioLCD(stats.maxX), canSolve: false },
         ];
       }
       case 'CNVR':
         return [
-          { key: 'cnvr_n', label: 'n', value: cnvrParams.n, canSolve: false },
-          { key: 'apr', label: 'APR', value: `${cnvrParams.apr}`, canSolve: true },
-          { key: 'eff', label: 'EFF', value: `${cnvrParams.eff}`, canSolve: true },
+          { key: 'cnvr_n', label: 'n', value: formatCasioLCD(cnvrParams.n), canSolve: false },
+          { key: 'apr', label: 'APR', value: formatCasioLCD(cnvrParams.apr), canSolve: true },
+          { key: 'eff', label: 'EFF', value: formatCasioLCD(cnvrParams.eff), canSolve: true },
         ];
       case 'COST':
         return [
-          { key: 'cst', label: 'CST', value: `${costParams.cst}`, canSolve: true },
-          { key: 'sel', label: 'SEL', value: `${costParams.sel}`, canSolve: true },
-          { key: 'mar', label: 'MAR%', value: `${costParams.mar}`, canSolve: true },
+          { key: 'cst', label: 'CST', value: formatCasioLCD(costParams.cst), canSolve: true },
+          { key: 'sel', label: 'SEL', value: formatCasioLCD(costParams.sel), canSolve: true },
+          { key: 'mar', label: 'MAR%', value: formatCasioLCD(costParams.mar), canSolve: true },
         ];
       case 'DAYS': {
         const dys = calculateDaysBetween(daysParams.d1, daysParams.d2, daysParams.basis);
         return [
           { key: 'dys_d1', label: 'd1', value: daysParams.d1, canSolve: false },
           { key: 'dys_d2', label: 'd2', value: daysParams.d2, canSolve: false },
-          { key: 'dys_dys', label: 'Dys', value: dys, canSolve: true },
+          { key: 'dys_dys', label: 'Dys', value: formatCasioLCD(dys), canSolve: true },
           { key: 'dys_basis', label: 'Set', value: daysParams.basis, canSolve: false },
         ];
       }
@@ -365,32 +366,32 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
         const deprRes = calculateDepreciation(deprParams);
         return [
           { key: 'depr_mth', label: 'MTH', value: deprParams.method, canSolve: false },
-          { key: 'depr_n', label: 'n', value: deprParams.n, canSolve: false },
-          { key: 'depr_cst', label: 'CST', value: deprParams.cst, canSolve: false },
-          { key: 'depr_sal', label: 'SAL', value: deprParams.sal, canSolve: false },
-          { key: 'depr_j', label: 'j', value: deprParams.j, canSolve: false },
-          { key: 'depr_dpj', label: 'DPJ', value: deprRes.dpj, canSolve: true },
-          { key: 'depr_rdv', label: 'RDV', value: deprRes.rdv, canSolve: true },
-          { key: 'depr_acc', label: 'ACC', value: deprRes.acc, canSolve: true },
+          { key: 'depr_n', label: 'n', value: formatCasioLCD(deprParams.n), canSolve: false },
+          { key: 'depr_cst', label: 'CST', value: formatCasioLCD(deprParams.cst), canSolve: false },
+          { key: 'depr_sal', label: 'SAL', value: formatCasioLCD(deprParams.sal), canSolve: false },
+          { key: 'depr_j', label: 'j', value: formatCasioLCD(deprParams.j), canSolve: false },
+          { key: 'depr_dpj', label: 'DPJ', value: formatCasioLCD(deprRes.dpj), canSolve: true },
+          { key: 'depr_rdv', label: 'RDV', value: formatCasioLCD(deprRes.rdv), canSolve: true },
+          { key: 'depr_acc', label: 'ACC', value: formatCasioLCD(deprRes.acc), canSolve: true },
         ];
       }
       case 'BOND':
         return [
-          { key: 'bond_cpn', label: 'CPN', value: `${bondParams.cpn}%`, canSolve: false },
-          { key: 'bond_yld', label: 'YLD', value: `${bondParams.yld}%`, canSolve: true },
-          { key: 'bond_prc', label: 'PRC', value: bondParams.prc, canSolve: true },
-          { key: 'bond_rdv', label: 'RDV', value: bondParams.rdv, canSolve: false },
+          { key: 'bond_cpn', label: 'CPN', value: `${formatCasioLCD(bondParams.cpn)}%`, canSolve: false },
+          { key: 'bond_yld', label: 'YLD', value: `${formatCasioLCD(bondParams.yld)}%`, canSolve: true },
+          { key: 'bond_prc', label: 'PRC', value: formatCasioLCD(bondParams.prc), canSolve: true },
+          { key: 'bond_rdv', label: 'RDV', value: formatCasioLCD(bondParams.rdv), canSolve: false },
         ];
       case 'BEVN':
         return [
-          { key: 'bevn_prc', label: 'PRC', value: bevnParams.prc, canSolve: true },
-          { key: 'bevn_vc', label: 'VC', value: bevnParams.vc, canSolve: true },
-          { key: 'bevn_fc', label: 'FC', value: bevnParams.fc, canSolve: true },
-          { key: 'bevn_q', label: 'Q', value: bevnParams.q, canSolve: true },
-          { key: 'bevn_prf', label: 'PRF', value: bevnParams.prf, canSolve: true },
+          { key: 'bevn_prc', label: 'PRC', value: formatCasioLCD(bevnParams.prc), canSolve: true },
+          { key: 'bevn_vc', label: 'VC', value: formatCasioLCD(bevnParams.vc), canSolve: true },
+          { key: 'bevn_fc', label: 'FC', value: formatCasioLCD(bevnParams.fc), canSolve: true },
+          { key: 'bevn_q', label: 'Q', value: formatCasioLCD(bevnParams.q), canSolve: true },
+          { key: 'bevn_prf', label: 'PRF', value: formatCasioLCD(bevnParams.prf), canSolve: true },
         ];
       default:
-        return [{ key: 'res', label: 'ANS', value: compResult, canSolve: false }];
+        return [{ key: 'res', label: 'ANS', value: formatCasioLCD(compResult), canSolve: false }];
     }
   };
 
@@ -425,13 +426,16 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     const selected = items[index];
     if (selected) {
       setIsEditing(true);
-      setEditValue(String(selected.value));
+      setEditValue(formatCasioLCD(selected.value));
       setIsParamHighlighted(true);
     }
   };
 
   const handleTouchSolveParam = (key: string) => {
     if (!isPoweredOn) return;
+    setIsEditing(false);
+    setEditValue('');
+    setIsParamHighlighted(false);
     handleSolve(key);
   };
 
@@ -824,6 +828,8 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     if (!isPoweredOn) return;
     playKeyClick('solve');
     setIsParamHighlighted(false);
+    setIsEditing(false);
+    setEditValue('');
     if (mode === 'COMP') {
       handleExe();
       return;
