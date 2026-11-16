@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CalculatorMode, PaymentTiming } from '../types/calculator';
 import { formatCasioLCD } from '../utils/casioFormat';
 import { triggerHaptic, playKeyClick } from '../utils/soundEffects';
-import { copyNumberToClipboard } from '../utils/clipboard';
-import { ChevronUp, Copy, Check, Sparkles } from 'lucide-react';
+import { copyNumberToClipboard, pasteNumberFromClipboard } from '../utils/clipboard';
+import { ChevronUp, Copy, Check, Sparkles, ClipboardPaste } from 'lucide-react';
 
 export interface MenuItem {
   key: string;
@@ -21,6 +21,7 @@ interface ExpandedTouchScreenProps {
   editValue: string;
   onSelectParam: (index: number) => void;
   onSolveParam: (key: string) => void;
+  onPasteParam?: (index: number, key: string, value: string) => void;
   onToggleTiming?: () => void;
   onCollapse: () => void;
   onSelectMode?: (newMode: CalculatorMode) => void;
@@ -41,6 +42,7 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
   editValue,
   onSelectParam,
   onSolveParam,
+  onPasteParam,
   onToggleTiming,
   onCollapse,
   onSelectMode,
@@ -82,6 +84,30 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
       showToast(`✓ הועתק ללוח: ${strVal}`);
     } else {
       showToast(`ערך: ${strVal}`);
+    }
+  };
+
+  const handlePasteIntoParam = async (index: number, key: string) => {
+    const pasted = await pasteNumberFromClipboard();
+    if (pasted) {
+      triggerHaptic('solve');
+      onPasteParam?.(index, key, pasted);
+      showToast(`✓ הודבק ל-${menuItems[index]?.label || 'פרמטר'}: ${pasted}`);
+    } else {
+      triggerHaptic('del');
+      showToast('לוח ההעתקה ריק או ללא מספר');
+    }
+  };
+
+  const handlePasteIntoComp = async () => {
+    const pasted = await pasteNumberFromClipboard();
+    if (pasted) {
+      triggerHaptic('solve');
+      onPasteParam?.(0, 'comp', pasted);
+      showToast(`✓ הודבק: ${pasted}`);
+    } else {
+      triggerHaptic('del');
+      showToast('לוח ההעתקה ריק או ללא מספר');
     }
   };
 
@@ -149,7 +175,7 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
         aria-hidden="true"
       />
 
-      {/* Toast Notification for Clipboard Copy */}
+      {/* Toast Notification for Clipboard Copy/Paste */}
       {toastMessage && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 bg-[#142017] text-[#92a494] px-3 py-1 rounded-full shadow-lg text-[11px] font-bold tracking-wide flex items-center gap-1.5 animate-bounce">
           <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -230,15 +256,23 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
             <div className="text-xs font-semibold text-[#142017]/80 truncate">
               {compExpression || '0'}
             </div>
-            <div className="text-xl sm:text-2xl font-black text-right font-mono text-[#101912] mt-0.5 tracking-tight flex items-center justify-end gap-1">
+            <div className="text-xl sm:text-2xl font-black text-right font-mono text-[#101912] mt-0.5 tracking-tight flex items-center justify-end gap-1.5">
               <span>{formatCasioLCD(compResult || '0')}</span>
               <button
                 type="button"
                 onClick={() => handleCopyValue(compResult || '0', 'Result')}
-                className="p-1 text-[#142017]/60 hover:text-[#142017] transition-colors ml-1"
-                title="העתק תוצאה"
+                className="p-1 text-[#142017]/70 hover:text-[#142017] transition-colors ml-1"
+                title="העתק תוצאה ללוח"
               >
                 <Copy className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handlePasteIntoComp}
+                className="p-1 text-[#142017]/70 hover:text-[#142017] transition-colors"
+                title="הדבק מספר מהלוח לביטוי"
+              >
+                <ClipboardPaste className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -272,9 +306,9 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
                     : 'bg-[#142017]/5 hover:bg-[#142017]/10 text-[#142017] border-[#142017]/15'
                 }`}
               >
-                {/* Left: Param Label & SOLVE action */}
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
+                {/* Left: Param Label & SOLVE action (shrink-0 ensures labels are never crowded) */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1 min-w-[36px]">
                     <span className={`font-mono text-sm sm:text-base font-extrabold ${isSelected ? 'text-[#a6baa8]' : 'text-[#101912]'}`}>
                       {item.label}
                     </span>
@@ -321,8 +355,8 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
                   )}
                 </div>
 
-                {/* Right: Parameter Value & Data-Input Active Highlight */}
-                <div className="flex items-center gap-1 font-mono">
+                {/* Right: Parameter Value & Actions (Strict 10-digit limit + Copy & Paste buttons) */}
+                <div className="flex items-center gap-1.5 font-mono ml-auto">
                   {isSelected ? (
                     /* Active editing state with blinking LCD cursor */
                     <div className="flex items-center bg-[#92a494] text-[#142017] px-2 py-0.5 rounded font-extrabold text-sm sm:text-base tracking-tight shadow-inner">
@@ -330,25 +364,40 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
                       <span className="inline-block w-2 h-4 sm:h-5 bg-[#142017] ml-0.5 animate-pulse" />
                     </div>
                   ) : (
-                    /* Standard displayed value */
-                    <div className="text-sm sm:text-base font-bold tracking-tight px-1 truncate max-w-[150px] sm:max-w-[180px] text-right">
+                    /* Standard displayed value (strictly max 10 digits via formatCasioLCD) */
+                    <div className="text-sm sm:text-base font-bold tracking-tight px-1 truncate max-w-[130px] sm:max-w-[150px] text-right">
                       {formatCasioLCD(displayValue)}
                     </div>
                   )}
 
-                  {/* Copy Hint Button */}
+                  {/* Copy Button */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCopyValue(item.value, item.label);
                     }}
-                    className={`p-1 rounded opacity-60 hover:opacity-100 transition-opacity ${
+                    className={`p-1 rounded opacity-70 hover:opacity-100 transition-opacity ${
                       isSelected ? 'text-[#92a494] hover:text-white' : 'text-[#142017]'
                     }`}
-                    title="העתק ערך ללוח המכשיר (או לחץ ארוכות על השורה)"
+                    title={`העתק ערך ${item.label} ללוח`}
                   >
-                    <Copy className="w-3 h-3" />
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Paste Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePasteIntoParam(index, item.key);
+                    }}
+                    className={`p-1 rounded opacity-70 hover:opacity-100 transition-opacity ${
+                      isSelected ? 'text-[#92a494] hover:text-white' : 'text-[#142017]'
+                    }`}
+                    title={`הדבק מהלוח ל-${item.label} (PASTE)`}
+                  >
+                    <ClipboardPaste className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -357,10 +406,21 @@ export const ExpandedTouchScreen: React.FC<ExpandedTouchScreenProps> = ({
         </div>
       )}
 
-      {/* Bottom Control Bar: Collapse Screen Back to Normal Dual-Line LCD */}
+      {/* Bottom Control Bar: Collapse Screen Back to Normal & Quick Paste */}
       <div className="mt-1.5 pt-1.5 border-t border-[#142017]/20 flex items-center justify-between text-[10px]">
-        <div className="text-[#142017]/70 text-[9px] truncate max-w-[160px] sm:max-w-[200px]">
-          {statusMessage || 'הקש להזנה • הקלד במקשים • החזק להעתקה'}
+        {/* Quick Paste Button for currently active parameter */}
+        <button
+          type="button"
+          onClick={() => handlePasteIntoParam(activeIndex, menuItems[activeIndex]?.key || '')}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#142017]/10 hover:bg-[#142017]/20 text-[#142017] font-bold text-[10px] tracking-wide transition-all border border-[#142017]/30 active:scale-95 shadow-sm"
+          title="הדבק מהלוח לפרמטר הפעיל"
+        >
+          <ClipboardPaste className="w-3 h-3 text-[#142017]" />
+          <span>הדבק (PASTE)</span>
+        </button>
+
+        <div className="text-[#142017]/70 text-[9px] truncate max-w-[120px] sm:max-w-[150px] hidden sm:block">
+          {statusMessage || 'הקש להזנה • החזק להעתקה • הדבק'}
         </div>
 
         {/* Up arrow collapse button */}

@@ -48,8 +48,9 @@ import {
   generateCashFlowSolution,
 } from '../engine/solutionsGenerator';
 import { playKeyClick, toggleSound, isSoundEnabled } from '../utils/soundEffects';
-import { Volume2, VolumeX, Settings, ChevronDown, ChevronUp, Power } from 'lucide-react';
+import { Volume2, VolumeX, Settings, ChevronDown, ChevronUp, Power, ClipboardPaste } from 'lucide-react';
 import { requestWakeLock, releaseWakeLock } from '../utils/wakeLock';
+import { copyNumberToClipboard, pasteNumberFromClipboard } from '../utils/clipboard';
 import { ExpandedTouchScreen } from './ExpandedTouchScreen';
 
 interface CasioFC200VProps {
@@ -434,6 +435,43 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     handleSolve(key);
   };
 
+  const handlePasteParam = (index: number, key: string, value: string) => {
+    if (!isPoweredOn) return;
+    setParamIndex(index);
+    setIsEditing(true);
+    setEditValue(value);
+    setIsParamHighlighted(false);
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      updateCurrentParamValue(key, num);
+    }
+    setStatusMessage(`PASTED: ${value}`);
+  };
+
+  const handlePasteFromClipboard = async () => {
+    if (!isPoweredOn) return;
+    const pasted = await pasteNumberFromClipboard();
+    if (pasted) {
+      playKeyClick('solve');
+      if (mode === 'COMP') {
+        setCompExpr((prev) => prev + pasted);
+        setStatusMessage(`PASTED: ${pasted}`);
+      } else {
+        setIsEditing(true);
+        setEditValue(pasted);
+        setIsParamHighlighted(false);
+        const num = parseFloat(pasted);
+        if (!isNaN(num)) {
+          updateCurrentParamValue(currentItem.key, num);
+        }
+        setStatusMessage(`PASTED: ${pasted}`);
+      }
+    } else {
+      playKeyClick('del');
+      setStatusMessage('CLIPBOARD EMPTY');
+    }
+  };
+
   const handleToggleTiming = () => {
     if (!isPoweredOn) return;
     const newTiming: PaymentTiming = tvmParams.set === 'End' ? 'Begin' : 'End';
@@ -513,6 +551,17 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
     if (isParamHighlighted) {
       setIsParamHighlighted(false);
       setEditValue(char);
+      return;
+    }
+
+    // Limit input length: maximum 10 digits to match Casio 10-digit LCD limit and prevent crowding
+    const currentDigits = editValue.replace(/[^0-9]/g, '').length;
+    if (char >= '0' && char <= '9' && currentDigits >= 10) {
+      return;
+    }
+
+    // Prevent duplicate decimal dots
+    if (char === '.' && editValue.includes('.')) {
       return;
     }
 
@@ -952,6 +1001,23 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
         return;
       }
 
+      // Keyboard Paste (Ctrl+V / Cmd+V)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        handlePasteFromClipboard();
+        return;
+      }
+
+      // Keyboard Copy (Ctrl+C / Cmd+C)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        const valToCopy = mode === 'COMP' ? compResult : String(currentItem.value);
+        copyNumberToClipboard(valToCopy);
+        playKeyClick('func');
+        setStatusMessage(`COPIED: ${valToCopy}`);
+        return;
+      }
+
       if (e.key >= '0' && e.key <= '9') {
         handleInputChar(e.key);
       } else if (e.key === '.') {
@@ -1091,6 +1157,7 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
               editValue={editValue}
               onSelectParam={handleTouchSelectParam}
               onSolveParam={handleTouchSolveParam}
+              onPasteParam={handlePasteParam}
               onToggleTiming={handleToggleTiming}
               onCollapse={() => {
                 playKeyClick('func');
@@ -1128,20 +1195,30 @@ export const CasioFC200V: React.FC<CasioFC200VProps> = ({
               />
             </div>
 
-            {/* Small Expand Button under LCD Screen */}
+            {/* Small Expand & Quick Paste Buttons under LCD Screen */}
             {isPoweredOn && (
-              <div className="flex justify-center -mt-1 mb-2 z-10 relative">
+              <div className="flex items-center justify-center gap-2 -mt-1 mb-2 z-10 relative">
                 <button
                   type="button"
                   onClick={() => {
                     playKeyClick('func');
                     setIsScreenExpanded(true);
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#1c1e24] hover:bg-[#252832] text-zinc-300 hover:text-white border border-zinc-700/60 shadow text-[10px] font-bold transition-all active:scale-95 group"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1c1e24] hover:bg-[#252832] text-zinc-300 hover:text-white border border-zinc-700/60 shadow text-[10px] font-bold transition-all active:scale-95 group"
                   title="הרחבת מסך מגע (Touch Screen)"
                 >
                   <ChevronDown className="w-3.5 h-3.5 text-emerald-400 group-hover:translate-y-0.5 transition-transform animate-pulse" />
                   <span>הרחבת מסך מגע</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePasteFromClipboard}
+                  className="flex items-center gap-1 px-3 py-1 rounded-full bg-[#1c1e24] hover:bg-[#252832] text-zinc-300 hover:text-white border border-zinc-700/60 shadow text-[10px] font-bold transition-all active:scale-95"
+                  title="הדבק מספר מהלוח למחשבון (PASTE)"
+                >
+                  <ClipboardPaste className="w-3.5 h-3.5 text-blue-400" />
+                  <span>הדבק</span>
                 </button>
               </div>
             )}
